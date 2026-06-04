@@ -1,2 +1,14 @@
+# What I've Chosen
 I've chosen Brasaland as my company because I have a passion for restaurants--I'm a foodie. I would love to work with restaurants in the future, because I understand how important it is for restaurants to stay up-to-date in the current market in order to succeed, and technology should never be the biggest hurdle to deliver great food to eager customers. I have several friends in the restaurant industry, both as head chefs and as managers, so I feel like I have a solid circle of people to discuss the project with and bounce ideas off of them for greater context of the real-world problem.
 
+# Motivating Departments
+Technology is probably the most challenging department to develop a solution for. Building a central API and designing a real-time data pipeline from the ground up is a task that feels directly related to the learning goals for this course. I feel like focusing on this problem will synthesize a diverse range of skills, which is going to require significant focus and practice on my end.
+
+Marketing is more of an area where I feel I can integrate my prior skills into the field I’m studying. I consider myself a creative, having a background in the music industry, so seeing how I can translate those skills into a technical setting is exactly what I want to get from this course.
+
+# My AI Agent Idea
+One of the main things that Brasaland needs is a streamlined way to collect, organize, and analyze data. There should be a central webpage and corresponding mobile app for customers to reserve tables, order takeout orders, and leave reviews. I propose an AI agent can coalesce and organize that data for review. It should also assist with managing a digital customer rewards program.
+
+Data collected by the agent can be used to answer ad hoc business questions, e.g. how many covers did location X do between times A and B? It can also be used to manage inventory and automate an order list for each restaurant so that managers don't need to place orders manually. The agent can also monitor traffic to / through the site / app in real time, and store that data to educate local managers on how to best offer promotions and schedule staff so that labor costs are minimized, static investory is mobilized, and profits are maximzed.
+
+An LLM such as GPT-5 or Claude would be a good basis for this, though further investigation into AI agents is necessary to determine the best option. Access to POS and inventory systems, restaurant supplier platforms, scheduling documents, and local demographic data are some of the data sets that the agent would need access to.
