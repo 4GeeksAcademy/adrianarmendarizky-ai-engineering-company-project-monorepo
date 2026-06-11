@@ -21,38 +21,38 @@ const fieldRules = {
     return "";
   },
   country: (value) => {
-    if (!value) return "Please select the country of interest.";
+    if (!value) return "Please select your country.";
     return "";
   },
   city: (value) => {
-    if (!value.trim()) return "Please enter the city you are targeting.";
+    if (!value.trim()) return "Please enter your city.";
     if (value.trim().length < 2) return "City name must contain at least 2 characters.";
     return "";
   },
-  experienceYears: (value) => {
-    if (value === "") return "Please enter your years of business experience.";
-    const years = Number(value);
-    if (Number.isNaN(years) || years < 0) return "Years of experience must be 0 or greater.";
+  birthMonth: () => {
     return "";
   },
-  locationType: (value) => {
-    if (!value) return "Please choose a preferred location type.";
+  favoriteLocation: (value) => {
+    if (!value) return "Please choose your favorite location type.";
     return "";
   },
-  investment: (value) => {
-    if (value === "") return "Please enter your available investment range in USD.";
-    const amount = Number(value);
-    if (Number.isNaN(amount) || amount < 0) return "Investment amount must be 0 or greater.";
-    if (amount < 50000) return "Minimum suggested investment is USD 50,000 for initial consideration.";
+  preferredChannel: (value) => {
+    if (!value) return "Please select your preferred channel for offers.";
     return "";
   },
   referralSource: (value) => {
-    if (!value) return "Please tell us how you heard about Brasaland.";
+    if (!value) return "Please tell us how you heard about Brasa Points.";
     return "";
   },
-  message: (value) => {
-    if (!value.trim()) return "Please share your motivation for partnering with Brasaland.";
-    if (value.trim().length < 20) return "Message must contain at least 20 characters.";
+  message: () => {
+    return "";
+  },
+  consent: (_, field) => {
+    if (!field.checked) return "Please agree to receive Brasa Points marketing communications.";
+    return "";
+  },
+  terms: (_, field) => {
+    if (!field.checked) return "Please acknowledge the Brasa Points program terms.";
     return "";
   },
 };
@@ -80,7 +80,7 @@ function validateField(field) {
   const validate = fieldRules[field.id];
   if (!validate) return true;
 
-  const message = validate(field.value);
+  const message = validate(field.value, field);
   setFieldState(field, message);
   return message === "";
 }

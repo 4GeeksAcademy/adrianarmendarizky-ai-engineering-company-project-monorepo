@@ -1,0 +1,56 @@
+<svg viewBox="0 0 680 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Brasaland logo">
+  <defs>
+    <radialGradient id="emberGlow" cx="50%" cy="55%" r="60%">
+      <stop offset="0%" stop-color="#FFE08A"/>
+      <stop offset="40%" stop-color="#FF8C42"/>
+      <stop offset="75%" stop-color="#E63B2E"/>
+      <stop offset="100%" stop-color="#E63B2E" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="crackGrad" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#FFD166"/>
+      <stop offset="100%" stop-color="#FF6B35"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ===== Mark: coals arranged in the shape of a B ===== -->
+  <g transform="translate(20,14) scale(1.1)">
+    <!-- hearth glow -->
+    <ellipse cx="62" cy="106" rx="44" ry="6" fill="#E63B2E" opacity="0.22"/>
+    <!-- ember glow burning through the cracks -->
+    <ellipse cx="62" cy="61" rx="42" ry="50" fill="url(#emberGlow)"/>
+
+    <!-- spine: three stacked coals -->
+    <polygon points="30,20 49,17 50,45 31,47" fill="#2E2622"/>
+    <polygon points="30,20 49,17 48,26 32,28" fill="#3D332D"/>
+    <polygon points="31,50 50,48 49,75 30,77" fill="#2E2622"/>
+    <path d="M37 70 L44 60" stroke="url(#crackGrad)" stroke-width="2.2" stroke-linecap="round" opacity="0.95"/>
+    <polygon points="30,80 49,78 50,102 32,103" fill="#2E2622"/>
+    <polygon points="30,80 49,78 47,86 32,87" fill="#3D332D"/>
+
+    <!-- top bowl -->
+    <polygon points="53,17 76,19 78,31 52,30" fill="#2E2622"/>
+    <polygon points="80,22 90,32 88,48 77,50 75,33" fill="#2E2622"/>
+    <polygon points="80,22 90,32 84,34 78,28" fill="#3D332D"/>
+
+    <!-- middle bar -->
+    <polygon points="52,49 78,47 80,59 53,61" fill="#2E2622"/>
+
+    <!-- bottom bowl -->
+    <polygon points="82,55 96,67 95,88 82,97 78,74" fill="#2E2622"/>
+    <polygon points="82,55 96,67 88,68 80,62" fill="#3D332D"/>
+    <path d="M88 84 L90 75" stroke="url(#crackGrad)" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+    <polygon points="53,93 78,92 80,103 52,104" fill="#2E2622"/>
+    <path d="M62 101 L68 95" stroke="url(#crackGrad)" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+
+    <!-- rising sparks -->
+    <path d="M88 10 l4 6.5 -4 6.5 -4 -6.5 z" fill="#FF8C42"/>
+    <path d="M99 22 l3 5 -3 5 -3 -5 z" fill="#FFB35C" opacity="0.9"/>
+    <path d="M76 6 l2.6 4.4 -2.6 4.4 -2.6 -4.4 z" fill="#FFD166" opacity="0.8"/>
+  </g>
+
+  <!-- ===== Wordmark ===== -->
+  <text x="178" y="94" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="58" letter-spacing="2">
+    <tspan fill="#E63B2E">BRASA</tspan><tspan fill="#2E2622">LAND</tspan>
+  </text>
+  <text x="182" y="124" font-family="Georgia, 'Times New Roman', serif" font-size="15" letter-spacing="6" fill="#6B5D54">AL CARBÓN · DESDE 2008</text>
+</svg>
