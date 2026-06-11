@@ -5,29 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Apply for Brasaland franchise or partnership opportunities in Colombia and the United States."
+      content="Sign up for Brasa Points to receive Brasaland offers, specials, event updates, and coupons."
     />
-    <title>Brasaland | Franchise and Partnership Application</title>
+    <title>Brasaland | Brasa Points Sign-Up</title>
     <link rel="stylesheet" href="./tailwind.css" />
     <script src="./validation.js" defer></script>
   </head>
-  <body class="min-h-screen bg-amber-50 text-stone-900 antialiased">
+  <body class="min-h-screen bg-stone-900 text-amber-50 antialiased">
     <a
       href="#application-main"
-      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-stone-900 focus:px-4 focus:py-2 focus:text-amber-50"
-      >Skip to application form</a
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-amber-700 focus:px-4 focus:py-2 focus:text-amber-50"
+      >Skip to sign-up form</a
     >
 
-    <header class="border-b border-amber-200 bg-amber-100/90" aria-label="Application page header">
+    <header class="border-b border-amber-200 bg-stone-900" aria-label="Brasa Points page header">
       <div class="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800">Brasaland</p>
-          <p class="text-sm text-stone-700">Franchise and Partnership Interest</p>
+        <div class="flex items-center">
+          <img
+            src="./assets/images/brasaland-logo-dark.svg"
+            alt="Brasaland logo"
+            width="306"
+            height="72"
+            class="h-12 w-auto object-contain"
+          />
         </div>
-        <nav aria-label="Application page navigation">
+        <nav aria-label="Brasa Points page navigation">
           <a
             href="./index.html"
-            class="rounded-md px-3 py-2 text-sm font-medium text-stone-800 hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
+            class="rounded-md px-3 py-2 text-sm font-medium text-amber-50 hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
             >Back to home</a
           >
         </nav>
@@ -37,33 +42,33 @@
     <main id="application-main" class="py-10 sm:py-14">
       <section aria-labelledby="application-title">
         <div class="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-          <article class="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm sm:p-8">
-            <h1 id="application-title" class="text-2xl font-bold text-stone-900 sm:text-3xl">
-              Tell us about your interest in Brasaland.
+          <article class="rounded-2xl border border-amber-200 bg-stone-900 p-6 shadow-sm sm:p-8">
+            <h1 id="application-title" class="text-2xl font-bold text-amber-50 sm:text-3xl">
+              Sign up for Brasa Points.
             </h1>
-            <p class="mt-3 text-sm leading-relaxed text-stone-700 sm:text-base">
-              Complete this form to start a conversation with the Brasaland Digital growth team.
+            <p class="mt-3 text-sm leading-relaxed text-amber-50 sm:text-base">
+              Share your details to receive offers, news on new specials and events, and exclusive coupons from Brasaland.
             </p>
 
             <div
               id="formSuccess"
-              class="mt-6 hidden rounded-md border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800"
+              class="mt-6 hidden rounded-md border border-emerald-300 bg-stone-900 p-4 text-sm text-emerald-500"
               role="status"
               aria-live="polite"
             >
-              Thank you. Your application was submitted successfully. Our team will contact you soon.
+              Thank you for joining Brasa Points. You are now subscribed to Brasaland offers, specials, event updates, and coupons.
             </div>
 
             <form id="interestForm" class="mt-8 space-y-8" novalidate aria-describedby="formHelp">
-              <p id="formHelp" class="text-xs text-stone-600">
-                All required fields must be completed before submission.
+              <p id="formHelp" class="text-xs text-amber-50">
+                Complete all required fields to enroll in Brasa Points and receive marketing updates.
               </p>
 
               <fieldset class="space-y-5" aria-labelledby="contact-legend">
-                <legend id="contact-legend" class="text-base font-semibold text-stone-900">Contact details</legend>
+                <legend id="contact-legend" class="text-base font-semibold text-amber-50">Contact details</legend>
 
                 <div>
-                  <label for="fullName" class="mb-2 block text-sm font-medium text-stone-800">Full name *</label>
+                  <label for="fullName" class="mb-2 block text-sm font-medium text-amber-50">Full name *</label>
                   <input
                     id="fullName"
                     name="fullName"
@@ -72,13 +77,13 @@
                     required
                     aria-required="true"
                     aria-describedby="fullNameError"
-                    class="field w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
                   />
                   <p id="fullNameError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                 </div>
 
                 <div>
-                  <label for="email" class="mb-2 block text-sm font-medium text-stone-800">Email *</label>
+                  <label for="email" class="mb-2 block text-sm font-medium text-amber-50">Email *</label>
                   <input
                     id="email"
                     name="email"
@@ -87,13 +92,13 @@
                     required
                     aria-required="true"
                     aria-describedby="emailError"
-                    class="field w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
                   />
                   <p id="emailError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                 </div>
 
                 <div>
-                  <label for="phone" class="mb-2 block text-sm font-medium text-stone-800">Phone *</label>
+                  <label for="phone" class="mb-2 block text-sm font-medium text-amber-50">Phone *</label>
                   <input
                     id="phone"
                     name="phone"
@@ -102,24 +107,24 @@
                     required
                     aria-required="true"
                     aria-describedby="phoneError"
-                    class="field w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
                   />
                   <p id="phoneError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                 </div>
               </fieldset>
 
-              <fieldset class="space-y-5" aria-labelledby="opportunity-legend">
-                <legend id="opportunity-legend" class="text-base font-semibold text-stone-900">Opportunity details</legend>
+              <fieldset class="space-y-5" aria-labelledby="preferences-legend">
+                <legend id="preferences-legend" class="text-base font-semibold text-amber-50">Rewards preferences</legend>
 
                 <div>
-                  <label for="country" class="mb-2 block text-sm font-medium text-stone-800">Country of interest *</label>
+                  <label for="country" class="mb-2 block text-sm font-medium text-amber-50">Country *</label>
                   <select
                     id="country"
                     name="country"
                     required
                     aria-required="true"
                     aria-describedby="countryError"
-                    class="field w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
                   >
                     <option value="">Select one</option>
                     <option value="Colombia">Colombia</option>
@@ -130,7 +135,7 @@
 
                 <div class="grid gap-5 sm:grid-cols-2">
                   <div>
-                    <label for="city" class="mb-2 block text-sm font-medium text-stone-800">City *</label>
+                    <label for="city" class="mb-2 block text-sm font-medium text-amber-50">City *</label>
                     <input
                       id="city"
                       name="city"
@@ -138,107 +143,161 @@
                       required
                       aria-required="true"
                       aria-describedby="cityError"
-                      class="field w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                      class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
                     />
                     <p id="cityError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                   </div>
 
                   <div>
-                    <label for="experienceYears" class="mb-2 block text-sm font-medium text-stone-800">Years of business experience *</label>
-                    <input
-                      id="experienceYears"
-                      name="experienceYears"
-                      type="number"
-                      min="0"
-                      required
-                      aria-required="true"
-                      aria-describedby="experienceYearsError"
-                      class="field w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                    />
-                    <p id="experienceYearsError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
+                    <label for="birthMonth" class="mb-2 block text-sm font-medium text-amber-50">Birth month (optional)</label>
+                    <select
+                      id="birthMonth"
+                      name="birthMonth"
+                      aria-describedby="birthMonthError"
+                      class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    >
+                      <option value="">Select one</option>
+                      <option value="January">January</option>
+                      <option value="February">February</option>
+                      <option value="March">March</option>
+                      <option value="April">April</option>
+                      <option value="May">May</option>
+                      <option value="June">June</option>
+                      <option value="July">July</option>
+                      <option value="August">August</option>
+                      <option value="September">September</option>
+                      <option value="October">October</option>
+                      <option value="November">November</option>
+                      <option value="December">December</option>
+                    </select>
+                    <p id="birthMonthError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                   </div>
                 </div>
 
                 <div>
-                  <label for="locationType" class="mb-2 block text-sm font-medium text-stone-800">Preferred location type *</label>
+                  <label for="favoriteLocation" class="mb-2 block text-sm font-medium text-amber-50">Favorite Brasaland location type *</label>
                   <select
-                    id="locationType"
-                    name="locationType"
+                    id="favoriteLocation"
+                    name="favoriteLocation"
                     required
                     aria-required="true"
-                    aria-describedby="locationTypeError"
-                    class="field w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    aria-describedby="favoriteLocationError"
+                    class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
                   >
                     <option value="">Select one</option>
-                    <option value="Urban">Urban</option>
-                    <option value="Suburban">Suburban</option>
-                    <option value="Tourist area">Tourist area</option>
+                    <option value="Dine-in restaurant">Dine-in restaurant</option>
+                    <option value="Mall location">Mall location</option>
+                    <option value="Takeout-focused location">Takeout-focused location</option>
                   </select>
-                  <p id="locationTypeError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
+                  <p id="favoriteLocationError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                 </div>
 
                 <div>
-                  <label for="investment" class="mb-2 block text-sm font-medium text-stone-800">Available investment range in USD *</label>
-                  <input
-                    id="investment"
-                    name="investment"
-                    type="number"
-                    min="0"
-                    required
-                    aria-required="true"
-                    aria-describedby="investmentError"
-                    class="field w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                  />
-                  <p id="investmentError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
+                  <label for="preferredChannel" class="mb-2 block text-sm font-medium text-amber-50">Preferred channel for offers *</label>
+                  <select
+                    id="preferredChannel"
+                    name="preferredChannel"
+                      required
+                      aria-required="true"
+                    aria-describedby="preferredChannelError"
+                    class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                  >
+                    <option value="">Select one</option>
+                    <option value="Email">Email</option>
+                    <option value="SMS">SMS</option>
+                    <option value="Email and SMS">Email and SMS</option>
+                  </select>
+                  <p id="preferredChannelError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                 </div>
 
                 <div>
-                  <label for="referralSource" class="mb-2 block text-sm font-medium text-stone-800">How did you hear about Brasaland? *</label>
+                  <label for="referralSource" class="mb-2 block text-sm font-medium text-amber-50">How did you hear about Brasa Points? *</label>
                   <select
                     id="referralSource"
                     name="referralSource"
                     required
                     aria-required="true"
                     aria-describedby="referralSourceError"
-                    class="field w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
                   >
                     <option value="">Select one</option>
+                    <option value="In-store">In-store</option>
                     <option value="Social media">Social media</option>
-                    <option value="Referral">Referral</option>
-                    <option value="Event">Event</option>
+                    <option value="Friend or family">Friend or family</option>
+                    <option value="Website">Website</option>
                     <option value="Other">Other</option>
                   </select>
                   <p id="referralSourceError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                 </div>
 
                 <div>
-                  <label for="message" class="mb-2 block text-sm font-medium text-stone-800">Message / motivation *</label>
+                  <label for="message" class="mb-2 block text-sm font-medium text-amber-50">Favorite menu items or interests (optional)</label>
                   <textarea
                     id="message"
                     name="message"
-                    rows="5"
-                    required
-                    aria-required="true"
+                    rows="4"
                     aria-describedby="messageError"
-                    class="field w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    class="field w-full rounded-md border border-amber-200 bg-stone-900 px-3 py-2 text-sm text-amber-50 focus:border-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-200"
                   ></textarea>
                   <p id="messageError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
+                </div>
+
+                <div>
+                  <label for="consent" class="mb-2 block text-sm font-medium text-amber-50">Marketing consent *</label>
+                  <div class="rounded-md border border-amber-200 bg-stone-900 px-3 py-2">
+                    <label class="flex items-start gap-3 text-sm text-amber-50" for="consent">
+                      <input
+                        id="consent"
+                        name="consent"
+                        type="checkbox"
+                        required
+                        aria-required="true"
+                        aria-describedby="consentError"
+                        class="field mt-1 h-4 w-4 rounded border-amber-200 text-amber-700 focus:ring-amber-600"
+                      />
+                      <span>
+                        I agree to receive marketing communications from Brasaland, including offers, information on new specials and events, and coupons.
+                      </span>
+                    </label>
+                  </div>
+                  <p id="consentError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
+                </div>
+
+                <div>
+                  <label for="terms" class="mb-2 block text-sm font-medium text-amber-50">Program acknowledgment *</label>
+                  <div class="rounded-md border border-amber-200 bg-stone-900 px-3 py-2">
+                    <label class="flex items-start gap-3 text-sm text-amber-50" for="terms">
+                      <input
+                        id="terms"
+                        name="terms"
+                        type="checkbox"
+                        required
+                        aria-required="true"
+                        aria-describedby="termsError"
+                        class="field mt-1 h-4 w-4 rounded border-amber-200 text-amber-700 focus:ring-amber-600"
+                      />
+                      <span>
+                        I understand Brasa Points communications are promotional and I can unsubscribe at any time.
+                      </span>
+                    </label>
+                  </div>
+                  <p id="termsError" class="mt-1 hidden text-xs font-medium text-red-700"></p>
                 </div>
               </fieldset>
 
               <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <button
                   type="submit"
-                  class="rounded-md bg-stone-900 px-5 py-2.5 text-sm font-semibold text-amber-50 hover:bg-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-800 focus-visible:ring-offset-2"
+                  class="rounded-md bg-amber-700 px-5 py-2.5 text-sm font-semibold text-amber-50 hover:bg-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 focus-visible:ring-offset-2"
                 >
-                  Submit application
+                  Complete sign-up
                 </button>
                 <button
                   id="clearForm"
                   type="button"
-                  class="rounded-md border border-stone-300 bg-white px-5 py-2.5 text-sm font-semibold text-stone-800 hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-600 focus-visible:ring-offset-2"
+                  class="rounded-md border border-amber-200 bg-stone-900 px-5 py-2.5 text-sm font-semibold text-amber-50 hover:bg-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 focus-visible:ring-offset-2"
                 >
-                  Clear form
+                  Clear sign-up form
                 </button>
               </div>
             </form>
@@ -247,14 +306,14 @@
       </section>
     </main>
 
-    <footer class="border-t border-amber-200 bg-amber-100 py-8" aria-label="Application footer contact information">
-      <div class="mx-auto grid w-full max-w-5xl gap-6 px-4 text-sm text-stone-800 sm:px-6 md:grid-cols-2 lg:px-8">
+    <footer class="border-t border-amber-200 bg-stone-900 py-8" aria-label="Brasa Points footer contact information">
+      <div class="mx-auto grid w-full max-w-5xl gap-6 px-4 text-sm text-amber-50 sm:px-6 md:grid-cols-2 lg:px-8">
         <article>
-          <h2 class="text-base font-semibold text-stone-900">Medellin HQ</h2>
+          <h2 class="text-base font-semibold text-amber-50">Medellin HQ</h2>
           <p class="mt-2">El Poblado, Medellin, Colombia</p>
         </article>
         <article>
-          <h2 class="text-base font-semibold text-stone-900">Miami Office</h2>
+          <h2 class="text-base font-semibold text-amber-50">Miami Office</h2>
           <p class="mt-2">Brickell District, Miami, Florida, United States</p>
         </article>
       </div>
