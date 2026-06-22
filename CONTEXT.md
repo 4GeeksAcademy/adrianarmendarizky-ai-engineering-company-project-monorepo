@@ -125,5 +125,3 @@ The AI challenges at Brasaland range from ingredient demand forecasting and menu
 
 ---
 
-_Internal document — 4Geeks Academy · AI Engineering Track_
-_For exclusive use in programme project generation_
