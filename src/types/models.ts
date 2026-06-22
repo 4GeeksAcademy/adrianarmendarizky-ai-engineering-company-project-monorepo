@@ -34,17 +34,6 @@ export interface SaleTransaction {
 
 export type PaymentMethod = "Cash" | "Credit card" | "Debit card" | "Digital wallet";
 
-export interface SaleTransaction {
-  id: string; // Transaction ID (e.g., "TXN-2024-15482")
-  locationId: string; // Location where sale occurred
-  itemId: string; // Menu item sold
-  quantity: number; // Number of units sold
-  totalPrice: Price; // Total price charged
-  paymentMethod: PaymentMethod; // How customer paid
-  timestamp: Date; // When the sale occurred
-  waiterName: string; // Staff member who served
-}
-
 export interface Location {
   id: string; // Location ID (e.g., "LOC-MEDELLIN-01")
   name: string; // Location name
