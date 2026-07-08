@@ -39,10 +39,23 @@ NEXT_PUBLIC_API_URL=https://playground.4geeks.com/tracker/api/v1
 ## Running
 
 ```bash
+# Make sure you are inside uis/talent-pipeline-tracker/
 npm run dev
 ```
 
 The app runs at `http://localhost:3000`. In GitHub Codespaces, open the forwarded port from the **Ports** tab if the preview does not appear automatically.
+
+If you run commands from the monorepo root, use:
+
+```bash
+npm --prefix uis/talent-pipeline-tracker run dev
+```
+
+### Troubleshooting
+
+- Error: `Missing script: "dev"`
+	- Cause: running `npm run dev` from the monorepo root (`/`) instead of this app folder.
+	- Fix: `cd uis/talent-pipeline-tracker && npm run dev`.
 
 ---
 
