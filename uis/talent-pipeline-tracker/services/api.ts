@@ -38,8 +38,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 // --- Candidates ---
 
 export async function getCandidates(): Promise<CandidateListResponse> {
-  // limit=100 pulls the full active search in one call for this milestone.
-  return request<CandidateListResponse>("/records?limit=100");
+  // limit is set high so the full candidate set — including newly created
+  // records beyond the first page — is fetched in one call.
+  return request<CandidateListResponse>("/records?limit=1000");
 }
 
 export async function getCandidate(id: string): Promise<Candidate> {
