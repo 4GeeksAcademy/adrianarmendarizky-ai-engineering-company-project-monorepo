@@ -1,10 +1,8 @@
-# Python virtual environment
-venv/
 .venv/
+venv/
 
-# Python bytecode cache
 __pycache__/
 *.pyc
 
-# env files
+db.json
 .env
