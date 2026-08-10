@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,6 +20,14 @@ export default function BackofficeLayout({
           <header className="bg-stone-900 text-white px-6 py-3 flex items-center gap-3 shadow">
             <span className="text-red-500 font-bold text-lg">BRASA</span>
             <span className="font-semibold text-stone-300">Back Office</span>
+            <nav className="flex gap-4 text-sm text-stone-300">
+              <Link href="/" className="hover:text-white">
+                Dashboard
+              </Link>
+              <Link href="/suppliers" className="hover:text-white">
+                Suppliers
+              </Link>
+            </nav>
             <span className="ml-auto text-xs text-stone-500 uppercase tracking-widest">
               Internal · Brasaland Digital
             </span>
