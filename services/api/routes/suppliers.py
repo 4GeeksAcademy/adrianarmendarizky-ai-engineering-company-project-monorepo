@@ -9,10 +9,11 @@ IDs ourselves.
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from tinydb import Query as TinyDBQuery
 
 from database import suppliers_table
+from dependencies import get_current_user
 from models import (
     Category,
     Country,
@@ -22,7 +23,9 @@ from models import (
     SupplierStatusUpdate,
 )
 
-router = APIRouter(prefix="/suppliers", tags=["suppliers"])
+# dependencies=[Depends(get_current_user)] applies to every route on this
+# router at once -- AUTH-01 requires all of these to need a valid token.
+router = APIRouter(prefix="/suppliers", tags=["suppliers"], dependencies=[Depends(get_current_user)])
 
 # A reusable "query builder" for TinyDB -- SupplierField.country == "USA"
 # is how TinyDB expresses "find documents where country equals USA".

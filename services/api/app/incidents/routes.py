@@ -5,16 +5,18 @@ HTTP endpoints for the incident analysis feature:
   POST /api/incidents/analyze          — upload a CSV, get the summary back as JSON
   GET  /api/incidents/results/export   — download the last summary as a CSV
 """
-import csv
-import io
-
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+
+from dependencies import get_current_user
 
 from . import controller
 
-router = APIRouter(prefix="/api/incidents", tags=["incidents"])
-
+# dependencies=[Depends(get_current_user)] applies to every route on this
+# router at once -- AUTH-01 requires all of these to need a valid token.
+router = APIRouter(
+    prefix="/api/incidents", tags=["incidents"], dependencies=[Depends(get_current_user)]
+)
 
 @router.post("/analyze")
 async def analyze_incidents(file: UploadFile = File(...)):

@@ -24,3 +24,10 @@ db = TinyDB(DB_PATH)
 # TinyDB organizes data into "tables" (similar to a table in SQL). All
 # supplier records live in this one table.
 suppliers_table = db.table("suppliers")
+
+# AUTH-01: User and Profile stay in TinyDB permanently -- even after
+# Supabase/Postgres is introduced elsewhere in the project, these two
+# tables are never migrated. Other Postgres-backed modules will only
+# ever store this User's id as user_uuid, never a copy of the row.
+users_table = db.table("users")
+profiles_table = db.table("profiles")
