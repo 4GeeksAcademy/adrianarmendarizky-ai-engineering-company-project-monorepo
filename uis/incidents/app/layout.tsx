@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import RouteGuard from "@/components/RouteGuard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,7 +32,9 @@ export default function WebLayout({
               Internal · Brasaland Digital
             </span>
           </header>
-          <main className="flex-1 px-6 py-8">{children}</main>
+          <main className="flex-1 px-6 py-8">
+            <RouteGuard>{children}</RouteGuard>
+          </main>
           <footer className="border-t border-stone-200 bg-white px-6 py-3 text-xs text-stone-400 text-center">
             Brasaland Digital — for internal use only
           </footer>

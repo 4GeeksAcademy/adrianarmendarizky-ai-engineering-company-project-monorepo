@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import LogoutButton from "@/components/LogoutButton";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,10 +28,14 @@ export default function BackofficeLayout({
               <Link href="/suppliers" className="hover:text-white">
                 Suppliers
               </Link>
+              <Link href="/account/profile" className="hover:text-white">
+                Account
+              </Link>
             </nav>
             <span className="ml-auto text-xs text-stone-500 uppercase tracking-widest">
               Internal · Brasaland Digital
             </span>
+            <LogoutButton />
           </header>
           <main className="flex-1 px-6 py-8">{children}</main>
           <footer className="border-t border-stone-200 bg-white px-6 py-3 text-xs text-stone-400 text-center">

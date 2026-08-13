@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import {
   analyzeIncidentsFile,
-  getExportUrl,
+  downloadResults,
   type AnalysisResult,
 } from "../lib/api";
 
@@ -134,6 +134,8 @@ export default function IncidentAnalysisPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const handleFileSelected = useCallback(async (file: File) => {
     setStatus("loading");
@@ -145,6 +147,20 @@ export default function IncidentAnalysisPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setStatus("error");
+    }
+  }, []);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await downloadResults();
+    } catch (err) {
+      setExportError(
+        err instanceof Error ? err.message : "Could not download results."
+      );
+    } finally {
+      setExporting(false);
     }
   }, []);
 
@@ -185,12 +201,18 @@ export default function IncidentAnalysisPage() {
                 {result.source_filename}
               </span>
             </p>
-            <a
-              href={getExportUrl()}
-              className="rounded-lg bg-stone-900 text-white text-sm font-medium px-4 py-2 hover:bg-stone-800 transition-colors"
-            >
-              Download results as CSV
-            </a>
+              <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="rounded-lg bg-stone-900 text-white text-sm font-medium px-4 py-2 hover:bg-stone-800 transition-colors disabled:opacity-50"
+              >
+                {exporting ? "Preparing download..." : "Download results as CSV"}
+              </button>
+              {exportError && (
+                <p className="text-xs text-red-600">{exportError}</p>
+              )}
+            </div>
           </div>
 
           {/* General metrics */}
