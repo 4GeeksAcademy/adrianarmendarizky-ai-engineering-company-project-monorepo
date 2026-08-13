@@ -7,6 +7,7 @@
 // screen without a full page reload.
 
 import { useEffect, useState, type FormEvent } from "react";
+import { authFetch } from "@/lib/api";
 
 // ---- Types (mirror services/api/models.py) ----
 
@@ -53,11 +54,6 @@ const COUNTRY_CURRENCY: Record<CountryValue, CurrencyValue> = {
   Colombia: "COP",
   USA: "USD",
 };
-
-// Set NEXT_PUBLIC_API_URL in uis/backoffice/.env.local to point at
-// your running FastAPI server if it's not on localhost:8000.
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
 
 function formatLabel(value: string): string {
   return value
@@ -152,7 +148,7 @@ export default function SuppliersPage() {
       const params = new URLSearchParams();
       if (countryFilter) params.set("country", countryFilter);
       if (categoryFilter) params.set("category", categoryFilter);
-      const res = await fetch(`${API_BASE}/suppliers?${params.toString()}`);
+      const res = await authFetch(`/suppliers?${params.toString()}`);
       if (!res.ok) throw new Error(`API returned ${res.status}`);
       const data: Supplier[] = await res.json();
       setSuppliers(data);
@@ -202,7 +198,7 @@ export default function SuppliersPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/suppliers`, {
+      const res = await authFetch(`/suppliers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -251,7 +247,7 @@ export default function SuppliersPage() {
 
     setRowBusyId(id);
     try {
-      const res = await fetch(`${API_BASE}/suppliers/${id}/rate`, {
+      const res = await authFetch(`/suppliers/${id}/rate`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rate_per_unit: rate }),
@@ -272,8 +268,8 @@ export default function SuppliersPage() {
       supplier.status === "active" ? "suspended" : "active";
     setRowBusyId(supplier.id);
     try {
-      const res = await fetch(
-        `${API_BASE}/suppliers/${supplier.id}/status`,
+      const res = await authFetch(
+        `/suppliers/${supplier.id}/status`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

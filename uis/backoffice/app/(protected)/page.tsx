@@ -8,14 +8,14 @@ import {
   sampleLocations,
   sampleSales,
   sampleMenuItems,
-} from "../../../src/types/models";
+} from "../../../../src/types/models";
 import {
   rankLocationsByPerformance,
   calculateCountryComparison,
   calculateAverageTicket,
   countSalesByPaymentMethod,
-} from "../../../src/utils/transformations";
-import { filterActiveLocations } from "../../../src/utils/collections";
+} from "../../../../src/utils/transformations";
+import { filterActiveLocations } from "../../../../src/utils/collections";
 
 // Run the Milestone 2 functions at render time (server component).
 const ranked = rankLocationsByPerformance(
