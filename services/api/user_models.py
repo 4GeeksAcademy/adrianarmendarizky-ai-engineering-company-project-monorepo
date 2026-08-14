@@ -97,3 +97,21 @@ class MeResponse(BaseModel):
     email: str
     role: Role
     profile: Profile
+
+
+    # ---------------------------------------------------------------------------
+# Password reset and change (AUTH-03).
+# ---------------------------------------------------------------------------
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)

@@ -31,3 +31,8 @@ suppliers_table = db.table("suppliers")
 # ever store this User's id as user_uuid, never a copy of the row.
 users_table = db.table("users")
 profiles_table = db.table("profiles")
+
+# AUTH-03: password reset tokens. Only a hash of each token is ever
+# stored here -- the raw token exists only in the email it's sent in,
+# same principle as never storing a plaintext password.
+password_resets_table = db.table("password_resets")

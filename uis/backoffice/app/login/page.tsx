@@ -21,6 +21,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo");
+  const resetSuccess = searchParams.get("reset") === "success";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,11 @@ function LoginForm() {
   return (
     <div className="mx-auto max-w-sm">
       <h1 className="text-2xl font-bold text-stone-900 mb-6">Log in</h1>
+      {resetSuccess && (
+        <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          Password updated — log in with your new password.
+        </p>
+      )}
 
       {error && (
         <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -90,7 +96,14 @@ function LoginForm() {
             className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
           />
         </label>
-
+        <p className="text-right">
+          <Link
+            href="/forgot-password"
+            className="text-xs font-medium text-stone-500 underline hover:text-stone-700"
+          >
+            Forgot your password?
+          </Link>
+        </p>
         <button
           type="submit"
           disabled={submitting}

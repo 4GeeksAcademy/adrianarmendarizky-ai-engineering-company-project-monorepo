@@ -16,7 +16,9 @@ and trust the result.
      so if decode succeeds, we know the token wasn't forged or edited.
 """
 
+import hashlib
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt
@@ -59,3 +61,26 @@ def decode_access_token(token: str) -> dict:
     Raises jose.JWTError otherwise -- callers (get_current_user) turn
     that into a 401."""
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+# --- Password reset tokens (AUTH-03) ---------------------------------
+
+# Deliberately NOT a JWT. A JWT's `exp` claim only proves a token hasn't
+# expired -- it says nothing about whether it's already been used, and
+# there's no way to revoke one early without extra server-side state
+# anyway. So instead: a random opaque string, sent to the user once by
+# email, with only its *hash* ever stored here -- exactly like a
+# password. Storing the hash (not the raw token) means a leaked
+# password_resets table would still be useless to an attacker.
+
+def generate_reset_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_reset_token(raw_token: str) -> str:
+    """A fast, deterministic hash (not bcrypt) -- resetting a password
+    means looking a token up by its hash, and bcrypt's per-call random
+    salt makes that kind of direct lookup impossible. Bcrypt's slowness
+    exists to slow down guessing a *short, human-chosen* password;
+    these tokens are 32 random bytes, already unguessable, so that
+    property buys nothing here."""
+    return hashlib.sha256(raw_token.encode()).hexdigest()

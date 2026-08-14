@@ -1,4 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Brasaland Back Office
+
+Internal admin app — also hosts the shared login/account views used by
+Incidents and Talent Pipeline Tracker (they redirect here when a session
+is missing).
+
+Requires `NEXT_PUBLIC_API_URL` in `.env.local`, pointing at `services/api`.
+
+| Route | Access |
+|---|---|
+| `/login`, `/register`, `/forgot-password`, `/reset-password` | Public |
+| `/`, `/suppliers`, `/account/profile`, `/account/change-password` | Protected |
+
+---
 
 ## Getting Started
 
