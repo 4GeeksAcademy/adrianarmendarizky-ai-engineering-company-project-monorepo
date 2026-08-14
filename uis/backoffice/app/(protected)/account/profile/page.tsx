@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { getMe, updateProfile, type MeResponse } from "@/lib/api";
 
 export default function AccountProfilePage() {
@@ -71,6 +72,12 @@ export default function AccountProfilePage() {
         <p className="text-sm text-stone-500 mt-1">
           {me.email} · {me.role}
         </p>
+        <Link
+          href="/account/change-password"
+          className="text-sm text-stone-500 underline hover:text-stone-700"
+        >
+          Change password
+        </Link>
       </div>
 
       {saveError && (

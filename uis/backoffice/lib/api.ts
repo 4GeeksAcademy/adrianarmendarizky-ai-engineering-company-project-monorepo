@@ -116,3 +116,59 @@ export async function updateProfile(changes: {
   if (!res.ok) throw new Error(`Could not update your profile (${res.status}).`);
   return res.json();
 }
+
+
+// --- Password reset and change (AUTH-03) ---
+
+export async function forgotPassword(email: string): Promise<void> {
+  // The backend always returns 200 here, whether or not the email is
+  // registered -- so this only throws on a genuine network failure,
+  // never based on the response body. The page calling this shows the
+  // same generic message either way, on purpose.
+  await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(
+  token: string,
+  newPassword: string
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(
+      typeof body?.detail === "string"
+        ? body.detail
+        : "That reset link is invalid or has expired."
+    );
+  }
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const res = await authFetch("/auth/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(
+      typeof body?.detail === "string" ? body.detail : "Could not change your password."
+    );
+  }
+}
