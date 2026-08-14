@@ -1,5 +1,5 @@
 """
-analyze.py — Brasaland Incident Report Processor (Phase 1)
+analyze.py — Brasaland Incident Report Processor
 
 Reads a CSV of after-sales incident records, validates each row against the
 rules in CONTEXT-brasaland.md, and prints a summary of the valid data plus a
@@ -8,159 +8,33 @@ breakdown of why any invalid rows were rejected.
 Usage:
     python analyze.py incidents-brasaland.csv
 
-Design note: every function below is a plain function that takes data in and
-returns data out — none of them print anything or touch the CLI. That's on
-purpose. In Phase 2 the API will need this exact same validation and
-metrics logic, so keeping it separate from the "print stuff to the terminal"
-code means we can import these functions later instead of copy-pasting them.
-Only main() (at the bottom) deals with argv, printing, and the y/n prompt.
+The validation rules themselves (what counts as a valid row, the category
+and location lists) now live in packages/shared/incident_validation — this
+script and scripts/seed_incidents.py both import from there instead of each
+defining their own copy. Everything below this point is specific to *this*
+script: computing the analyzer's own metrics and printing them.
 """
 
 import csv
-import io
 import sys
+from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# Constants pulled directly from CONTEXT-brasaland.md — change here if the
-# company ever adds a location or a category, nowhere else.
-# ---------------------------------------------------------------------------
+# packages/shared/ lives two levels up from this file: scripts/ -> repo root.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SHARED_DIR = REPO_ROOT / "packages" / "shared"
+if str(SHARED_DIR) not in sys.path:
+    sys.path.insert(0, str(SHARED_DIR))
 
-VALID_LOCATIONS = {f"COL-{n:02d}" for n in range(1, 11)} | {f"FLA-{n:02d}" for n in range(1, 5)}
-
-# Order here is also the display order in the console/CSV output.
-CATEGORY_ORDER = [
-    "CUSTOMER_COMPLAINT",
-    "EQUIPMENT",
-    "SUPPLY",
-    "FOOD_QUALITY",
-    "STAFF",
-]
-VALID_CATEGORIES = set(CATEGORY_ORDER)
-
-STATUS_ORDER = ["OPEN", "CLOSED", "DISCARDED"]
-VALID_STATUSES = set(STATUS_ORDER)
-
-# The 6 rules from the "Rules for Invalid Records" table, in the order
-# they're checked. Keeping them as an ordered list (not just a dict) makes
-# the console/CSV output print in a predictable, readable order.
-INVALID_RULES = [
-    "missing_location_id",
-    "invalid_category",
-    "empty_description",
-    "missing_reporter_id",
-    "closed_no_score",
-    "score_out_of_range",
-]
-
-RULE_LABELS = {
-    "missing_location_id": "Missing location_id",
-    "invalid_category": "Invalid or missing category",
-    "empty_description": "Empty description",
-    "missing_reporter_id": "Missing reporter_id",
-    "closed_no_score": "Closed case, no score",
-    "score_out_of_range": "Satisfaction score out of range",
-}
-
-
-# ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
-
-def validate_record(row):
-    """
-    Check one CSV row (a dict) against the 6 rules from CONTEXT.
-
-    Returns a list of rule names that this row fails. An empty list means
-    the row is valid. A row can fail more than one rule at once.
-    """
-    failed = []
-
-    location_id = (row.get("location_id") or "").strip()
-    if not location_id or location_id not in VALID_LOCATIONS:
-        failed.append("missing_location_id")
-
-    category = (row.get("category") or "").strip()
-    if not category or category not in VALID_CATEGORIES:
-        failed.append("invalid_category")
-
-    description = (row.get("description") or "").strip()
-    if len(description) < 5:
-        failed.append("empty_description")
-
-    reporter_id = (row.get("reporter_id") or "").strip()
-    if not reporter_id:
-        failed.append("missing_reporter_id")
-
-    status = (row.get("status") or "").strip()
-    raw_score = (row.get("satisfaction_score") or "").strip()
-
-    if status == "CLOSED" and not raw_score:
-        failed.append("closed_no_score")
-
-    if raw_score:
-        try:
-            score = int(raw_score)
-            if score < 1 or score > 5:
-                failed.append("score_out_of_range")
-        except ValueError:
-            # Not even a number — that's also "out of range" for our purposes.
-            failed.append("score_out_of_range")
-
-    return failed
-
-
-def parse_score(row):
-    """Return the row's satisfaction_score as an int, or None if absent/unparseable."""
-    raw = (row.get("satisfaction_score") or "").strip()
-    if not raw:
-        return None
-    try:
-        return int(raw)
-    except ValueError:
-        return None
-
-
-# ---------------------------------------------------------------------------
-# Loading + splitting the file
-# ---------------------------------------------------------------------------
-
-def load_records_from_text(csv_text):
-    """
-    Parse CSV content that's already in memory (a string) into a list of row
-    dicts. This is the piece the API reuses directly — an uploaded file
-    arrives as bytes/text, not as a path on disk, so this is the shared
-    entry point both the script and the API call into.
-    """
-    reader = csv.DictReader(io.StringIO(csv_text))
-    return list(reader)
-
-
-def load_records(csv_path):
-    """Read a CSV file from disk and return a list of row dicts (raw, unvalidated)."""
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        return load_records_from_text(f.read())
-
-
-def split_records(records):
-    """
-    Run every record through validate_record and split them into two lists:
-    valid records and invalid records. Also returns a count per rule type,
-    so we know *why* the invalid ones were rejected.
-    """
-    valid = []
-    invalid = []
-    rule_counts = {rule: 0 for rule in INVALID_RULES}
-
-    for row in records:
-        failed_rules = validate_record(row)
-        if failed_rules:
-            invalid.append((row, failed_rules))
-            for rule in failed_rules:
-                rule_counts[rule] += 1
-        else:
-            valid.append(row)
-
-    return valid, invalid, rule_counts
+from incident_validation import (  # noqa: E402
+    CATEGORY_ORDER,
+    INVALID_RULES,
+    RULE_LABELS,
+    STATUS_ORDER,
+    load_records,
+    load_records_from_text,
+    parse_score,
+    split_records,
+)
 
 
 # ---------------------------------------------------------------------------

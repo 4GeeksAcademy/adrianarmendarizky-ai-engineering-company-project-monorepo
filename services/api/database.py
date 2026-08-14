@@ -36,3 +36,10 @@ profiles_table = db.table("profiles")
 # stored here -- the raw token exists only in the email it's sent in,
 # same principle as never storing a plaintext password.
 password_resets_table = db.table("password_resets")
+
+# Centralized Incident Manager. Each document also carries an internal
+# "source_ref" key (the historical CSV's incident_id, when the record
+# came from scripts/seed_incidents.py) used only for that script's own
+# duplicate-detection on re-runs -- it's never part of the Incident
+# Pydantic model, so it never appears in an API response.
+incidents_table = db.table("incidents")
