@@ -2,25 +2,32 @@
 incidents/controller.py
 
 Bridges the FastAPI layer to the exact same validation and analysis logic
-used by scripts/analyze.py. Nothing here re-implements a rule — it imports
-the real functions from the script and just reshapes the result into JSON.
+used by scripts/analyze.py. Nothing here re-implements a rule.
 
-This is why analyze.py was written as a set of plain functions in Phase 1
-instead of one big script: reusing it here means the API and the terminal
-script can never quietly drift apart and give different numbers for the
-same file.
+The CSV validation rules (what counts as a valid row) come from
+packages/shared/incident_validation, the same place scripts/seed_incidents.py
+gets them from. The metrics/export formatting specific to this analyzer
+feature (compute_metrics, build_export_rows, etc.) still comes from
+scripts/analyze.py, since that part isn't shared with anything else.
 """
 import sys
 from pathlib import Path
 
-# scripts/ lives at the repo root. From this file that's four levels up:
-# incidents/ -> app/ -> api/ -> services/ -> repo root.
+# From this file: incidents/ -> app/ -> api/ -> services/ -> repo root.
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
+SHARED_DIR = REPO_ROOT / "packages" / "shared"
+for path in (SCRIPTS_DIR, SHARED_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
-import analyze  # noqa: E402 (import must come after the sys.path change above)
+import analyze  # noqa: E402 (imports must come after the sys.path changes above)
+from incident_validation import (  # noqa: E402
+    INVALID_RULES,
+    RULE_LABELS,
+    load_records_from_text,
+    split_records,
+)
 
 
 class EmptyFileError(Exception):
@@ -54,12 +61,12 @@ def run_analysis(filename: str, file_bytes: bytes) -> dict:
     except UnicodeDecodeError:
         raise InvalidCsvError("The file isn't valid UTF-8 text.")
 
-    records = analyze.load_records_from_text(csv_text)
+    records = load_records_from_text(csv_text)
     if not records:
         raise InvalidCsvError("No data rows found in the file.")
 
     total_records = len(records)
-    valid, invalid, rule_counts = analyze.split_records(records)
+    valid, invalid, rule_counts = split_records(records)
     metrics = analyze.compute_metrics(valid)
 
     result = {
@@ -70,10 +77,10 @@ def run_analysis(filename: str, file_bytes: bytes) -> dict:
         "invalid_breakdown": [
             {
                 "rule": rule,
-                "label": analyze.RULE_LABELS[rule],
+                "label": RULE_LABELS[rule],
                 "count": rule_counts[rule],
             }
-            for rule in analyze.INVALID_RULES
+            for rule in INVALID_RULES
         ],
         "category_breakdown": [
             {

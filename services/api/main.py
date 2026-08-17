@@ -23,8 +23,9 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.incidents.routes import router as incidents_router
+from app.incidents.routes import router as incidents_analyzer_router
 from routes.auth import router as auth_router
+from routes.incidents import router as incidents_router
 from routes.profiles import router as profiles_router
 from routes.suppliers import router as suppliers_router
 from routes.users import router as users_router
@@ -63,6 +64,12 @@ app.include_router(users_router)
 app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(suppliers_router)
+# The analyzer router (CSV upload/export, literal paths like /analyze and
+# /results/export) is included before the management router (which has
+# /{incident_id:int} on the same /api/incidents prefix). The :int
+# converter on that dynamic route already makes the order safe either
+# way, but keeping literal paths first is the clearer convention.
+app.include_router(incidents_analyzer_router)
 app.include_router(incidents_router)
 
 
