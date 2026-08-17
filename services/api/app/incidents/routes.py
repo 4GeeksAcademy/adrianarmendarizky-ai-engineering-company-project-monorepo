@@ -5,6 +5,9 @@ HTTP endpoints for the incident analysis feature:
   POST /api/incidents/analyze          — upload a CSV, get the summary back as JSON
   GET  /api/incidents/results/export   — download the last summary as a CSV
 """
+import csv
+import io
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 

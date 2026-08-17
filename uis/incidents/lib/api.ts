@@ -67,6 +67,99 @@ export type AnalysisResult = {
 
 export class ApiError extends Error {}
 
+// Thrown when the API's error response identifies a specific bad field
+// (the shape routes/incidents.py returns for a 400: {field, message}) --
+// lets a form show the message next to the right input instead of as a
+// generic banner.
+export class FieldValidationError extends ApiError {
+  field: string;
+  constructor(field: string, message: string) {
+    super(message);
+    this.field = field;
+  }
+}
+
+async function throwForErrorResponse(response: Response): Promise<never> {
+  const body = await response.json().catch(() => null);
+  const detail = body?.detail;
+  if (detail && typeof detail === "object" && "field" in detail && "message" in detail) {
+    throw new FieldValidationError(detail.field, detail.message);
+  }
+  const message = typeof detail === "string" ? detail : `Request failed with status ${response.status}`;
+  throw new ApiError(message);
+}
+
+// ---------------------------------------------------------------------------
+// Centralized Incident Manager
+// ---------------------------------------------------------------------------
+
+export type Incident = {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  status: string;
+  origin: string;
+  branch: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type IncidentCreatePayload = {
+  title: string;
+  description: string;
+  category: string;
+  origin: string;
+  branch: string;
+};
+
+export type IncidentSummary = {
+  total: number;
+  by_status: Record<string, number>;
+  by_category: Record<string, number>;
+  by_origin: Record<string, number>;
+  by_branch: Record<string, number>;
+};
+
+export async function createIncident(payload: IncidentCreatePayload): Promise<Incident> {
+  const response = await authFetch("/api/incidents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) return throwForErrorResponse(response);
+  return response.json();
+}
+
+export async function listIncidents(
+  filters: { status?: string; origin?: string; branch?: string; category?: string } = {}
+): Promise<Incident[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  const response = await authFetch(`/api/incidents${query ? `?${query}` : ""}`);
+  if (!response.ok) return throwForErrorResponse(response);
+  return response.json();
+}
+
+export async function updateIncidentStatus(id: number, status: string): Promise<Incident> {
+  const response = await authFetch(`/api/incidents/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) return throwForErrorResponse(response);
+  return response.json();
+}
+
+export async function getIncidentSummary(): Promise<IncidentSummary> {
+  const response = await authFetch("/api/incidents/summary");
+  if (!response.ok) return throwForErrorResponse(response);
+  return response.json();
+}
+
 export async function analyzeIncidentsFile(file: File): Promise<AnalysisResult> {
   const formData = new FormData();
   formData.append("file", file);
