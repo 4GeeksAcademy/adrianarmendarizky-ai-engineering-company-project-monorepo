@@ -35,7 +35,7 @@ def register_user(user_in: UserCreate):
     try:
         return svc.create_user(user_in)
     except svc.EmailAlreadyRegisteredError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=409, detail="Email already registered.")
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ def update_user(
     try:
         return svc.update_user(user_id, updates)
     except svc.EmailAlreadyRegisteredError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=409, detail="Email already registered.")
 
 
 # ---------------------------------------------------------------------------

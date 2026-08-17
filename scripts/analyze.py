@@ -201,21 +201,23 @@ def main():
 
     try:
         records = load_records(csv_path)
+        total_records = len(records)
+        valid, invalid, rule_counts = split_records(records)
+        metrics = compute_metrics(valid)
+
+        print_summary(csv_path, total_records, len(invalid), rule_counts, metrics)
+
+        answer = input("Export results to CSV? [y / n]: ").strip().lower()
+        if answer == "y":
+            rows = build_export_rows(total_records, len(invalid), rule_counts, metrics)
+            export_to_csv(rows, "results.csv")
+            print("Saved to results.csv")
     except FileNotFoundError:
         print(f"Error: file not found: {csv_path}")
         sys.exit(1)
-
-    total_records = len(records)
-    valid, invalid, rule_counts = split_records(records)
-    metrics = compute_metrics(valid)
-
-    print_summary(csv_path, total_records, len(invalid), rule_counts, metrics)
-
-    answer = input("Export results to CSV? [y / n]: ").strip().lower()
-    if answer == "y":
-        rows = build_export_rows(total_records, len(invalid), rule_counts, metrics)
-        export_to_csv(rows, "results.csv")
-        print("Saved to results.csv")
+    except Exception as exc:
+        print(f"Error: analysis failed unexpectedly: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

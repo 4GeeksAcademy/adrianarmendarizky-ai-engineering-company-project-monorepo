@@ -23,10 +23,11 @@ router = APIRouter(
 
 @router.post("/analyze")
 async def analyze_incidents(file: UploadFile = File(...)):
-    file_bytes = await file.read()
-
     try:
+        file_bytes = await file.read()
         result = controller.run_analysis(file.filename, file_bytes)
+    except OSError:
+        raise HTTPException(status_code=400, detail="Could not read the uploaded file.")
     except controller.EmptyFileError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except controller.InvalidCsvError as exc:

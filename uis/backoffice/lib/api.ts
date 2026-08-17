@@ -125,11 +125,14 @@ export async function forgotPassword(email: string): Promise<void> {
   // registered -- so this only throws on a genuine network failure,
   // never based on the response body. The page calling this shows the
   // same generic message either way, on purpose.
-  await fetch(`${API_BASE}/auth/forgot-password`, {
+  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
+  if (!res.ok) {
+    throw new Error("Could not process request. Please try again.");
+  }
 }
 
 export async function resetPassword(

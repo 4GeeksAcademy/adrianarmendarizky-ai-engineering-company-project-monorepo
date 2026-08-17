@@ -16,23 +16,26 @@ export default function AccountProfilePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await getMe();
-        setMe(data);
-        setName(data.profile.name ?? "");
-        setPhone(data.profile.phone ?? "");
-        setAddress(data.profile.address ?? "");
-      } catch (err) {
-        setLoadError(
-          err instanceof Error ? err.message : "Could not load your account."
-        );
-      } finally {
-        setLoading(false);
-      }
+  async function loadProfile() {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await getMe();
+      setMe(data);
+      setName(data.profile.name ?? "");
+      setPhone(data.profile.phone ?? "");
+      setAddress(data.profile.address ?? "");
+    } catch (err) {
+      setLoadError(
+        err instanceof Error ? err.message : "Could not load your account."
+      );
+    } finally {
+      setLoading(false);
     }
-    load();
+  }
+
+  useEffect(() => {
+    loadProfile();
   }, []);
 
   async function handleSubmit(e: FormEvent) {
@@ -59,9 +62,23 @@ export default function AccountProfilePage() {
 
   if (loadError || !me) {
     return (
-      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-        {loadError ?? "Could not load your account."}
-      </p>
+      <div className="space-y-3">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {loadError ?? "Could not load your account."}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={loadProfile}
+            className="rounded border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+          >
+            Retry
+          </button>
+          <Link href="/" className="text-sm text-stone-600 underline hover:text-stone-800">
+            Back to dashboard
+          </Link>
+        </div>
+      </div>
     );
   }
 

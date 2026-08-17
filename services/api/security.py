@@ -40,9 +40,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # --- JWT ----------------------------------------------------------------
 
 # Read from the environment (populated from .env via load_dotenv() in
-# main.py) -- never hardcoded, per the brief. The fallback values only
-# matter if .env is missing; don't rely on them past local dev.
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
+# main.py). If missing, fail fast during startup so the app never runs
+# with an unsafe implicit secret.
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY environment variable is required.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
