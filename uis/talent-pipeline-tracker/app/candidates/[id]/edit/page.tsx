@@ -39,7 +39,7 @@ export default function EditCandidatePage() {
           experience_years: c.experience_years,
         });
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : "Something went wrong.");
+        setLoadError("Could not load candidate details. Please try again.");
       } finally {
         setLoading(false);
       }

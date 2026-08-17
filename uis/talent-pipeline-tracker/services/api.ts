@@ -21,18 +21,27 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error("API URL is not configured. Check .env.local.");
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+  } catch {
+    throw new Error("Unexpected response from the server.");
+  }
 
   if (!response.ok) {
     throw new Error(`Request failed (${response.status}). Please try again.`);
   }
 
-  // DELETE endpoints may return an empty body — guard against that.
-  const text = await response.text();
-  return (text ? JSON.parse(text) : null) as T;
+  try {
+    // DELETE endpoints may return an empty body — guard against that.
+    const text = await response.text();
+    return (text ? JSON.parse(text) : null) as T;
+  } catch {
+    throw new Error("Unexpected response from the server.");
+  }
 }
 
 // --- Candidates ---

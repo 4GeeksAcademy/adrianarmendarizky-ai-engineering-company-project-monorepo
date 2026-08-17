@@ -12,6 +12,7 @@ or, if your monorepo's pyproject.toml defines a "seed" script entry:
     uv run seed
 """
 
+import sys
 from datetime import datetime, timezone
 
 from database import suppliers_table
@@ -197,7 +198,11 @@ def seed_database() -> int:
 def main() -> None:
     """Entry point for `uv run seed` -- discards the int return value so it
     never gets passed to sys.exit() as a (misleading) nonzero exit code."""
-    seed_database()
+    try:
+        seed_database()
+    except Exception as exc:
+        print(f"Seeding failed: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

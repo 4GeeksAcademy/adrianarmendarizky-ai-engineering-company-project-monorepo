@@ -8,20 +8,19 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitFailed, setSubmitFailed] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    // Same outcome shown whether the address is registered or not, and
-    // even if the request itself fails -- there's nothing useful or
-    // safe to tell an unauthenticated visitor beyond this either way.
+    setSubmitFailed(false);
     try {
       await forgotPassword(email);
+      setSubmitted(true);
     } catch {
-      // intentionally ignored -- see above
+      setSubmitFailed(true);
     } finally {
       setSubmitting(false);
-      setSubmitted(true);
     }
   }
 
@@ -37,31 +36,46 @@ export default function ForgotPasswordPage() {
           shortly. Check your inbox.
         </p>
       ) : (
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-xl border border-stone-200 bg-white p-5 shadow-sm"
-        >
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium text-stone-700">
-              Email
-            </span>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
-            />
-          </label>
+        <div className="space-y-3">
+          {submitFailed && (
+            <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-700 shadow-sm">
+              <p>We couldn&apos;t process that request right now.</p>
+              <button
+                type="button"
+                onClick={() => setSubmitFailed(false)}
+                className="mt-3 rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+              >
+                Try again
+              </button>
+            </div>
+          )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 rounded-xl border border-stone-200 bg-white p-5 shadow-sm"
           >
-            {submitting ? "Sending..." : "Send reset link"}
-          </button>
-        </form>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-stone-700">
+                Email
+              </span>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
+            >
+              {submitting ? "Sending..." : "Send reset link"}
+            </button>
+          </form>
+        </div>
       )}
 
       <p className="mt-4 text-sm text-stone-500">

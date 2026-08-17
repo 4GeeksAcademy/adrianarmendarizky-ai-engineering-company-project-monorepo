@@ -15,6 +15,18 @@ at `http://localhost:8000/docs`.
 
 ### Environment variables (`.env`)
 
+This app requires JWT_SECRET_KEY to be set — it will not start without it
+(this used to silently fall back to an insecure default; that fallback
+was removed). Copy .env.example to .env and fill in a value:
+
+    python -c "import secrets; print(secrets.token_hex(32))"
+
+If you're launching this in your own Codespace, note that Codespaces
+secrets are personal to each GitHub account — mine won't carry over to
+yours. You'll need to either add the line above to your own .env, or
+set your own JWT_SECRET_KEY under Settings → Codespaces scoped to this
+repo.
+
 | Variable | Purpose |
 |---|---|
 | `JWT_SECRET_KEY` | Signs session tokens — never commit a real value |

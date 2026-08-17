@@ -1,0 +1,248 @@
+# Brasaland Monorepo — Architecture Overview
+
+Prepared as context for an error-handling audit. Everything under "Backend" and
+"uis/incidents" is verified firsthand (built, tested, and run this session).
+Everything under the other three frontend apps is from direct repo inspection
+of file structure, not a deep read of their internals — flagged where relevant.
+
+## Big picture
+
+One FastAPI backend (`services/api`), one JSON-file database (TinyDB), and
+four independent Next.js frontends under `uis/`. Only one frontend
+(`backoffice`) has a login screen — the other three redirect to it and get
+handed a token back. There is no API gateway; every frontend talks to
+`services/api` directly over HTTP.
+
+```
+services/api/     <- single FastAPI app, JWT auth, TinyDB
+packages/shared/  <- code shared across apps (TS types + a Python package)
+scripts/          <- standalone CLI scripts, run outside the running app
+uis/
+  backoffice/     <- internal ops dashboard; the ONLY app with login/register
+  incidents/      <- CSV analyzer + incident manager (register/list/summary)
+  talent-pipeline-tracker/  <- candidate tracking
+  website/        <- public-facing site + job application form
+```
+
+## Backend — `services/api`
+
+Single entry point: `main.py`, run with `uvicorn main:app`. Mounts these
+routers, all against the same FastAPI app instance:
+
+| Router | Prefix | Notes |
+|---|---|---|
+| `routes/users.py` | `/users` | user CRUD |
+| `routes/auth.py` | `/auth` | login (OAuth2 password flow), forgot/reset/change password |
+| `routes/profiles.py` | `/profiles` | current user's profile |
+| `routes/suppliers.py` | `/suppliers` | supplier directory, rate/status updates |
+| `app/incidents/routes.py` | `/api/incidents` | **older style**: CSV upload → analyze → export. In-memory last-result cache, no persistence. |
+| `routes/incidents.py` | `/api/incidents` | **newer style**: persisted Incident model, full CRUD-ish lifecycle, `/summary` |
+
+Two routers share the `/api/incidents` prefix without colliding, because the
+newer router's ID route is declared as `{incident_id:int}` — a plain
+`{incident_id}` would have silently matched literal paths like `/analyze`
+first.
+
+**Persistence** — `database.py`: one TinyDB file (`db.json`), one `TinyDB`
+instance, tables via `db.table(...)`: `suppliers`, `users`, `profiles`,
+`password_resets`, `incidents`. No real database, no migrations — schema
+changes are just "start writing a differently-shaped dict."
+
+**Auth** — `security.py` (JWT signing, `JWT_SECRET_KEY` env var with a dev
+fallback) + `dependencies.py` (`get_current_user`, a FastAPI dependency that
+decodes the bearer token). Applied at the **router level**
+(`dependencies=[Depends(get_current_user)]`) on `suppliers` and both
+incidents routers — every route on those routers requires auth with no
+per-route boilerplate. `users`/`auth`/`profiles` routes are a mix of public
+(login, register, forgot-password) and protected.
+
+**Two different validation-error conventions coexist right now:**
+- `suppliers`, `users`, `auth`, `profiles`, and the older analyzer router all
+  rely on FastAPI's automatic Pydantic body validation → framework default
+  `422` with FastAPI's own error shape.
+- The newer `routes/incidents.py` deliberately bypasses that: it accepts the
+  raw body, validates it by hand, and raises a custom `400` with
+  `{"field": ..., "message": ...}`. This was a deliberate choice for that
+  one router (a project requirement), not applied anywhere else. **This
+  split is probably the single most relevant thing for an error-handling
+  audit** — worth deciding whether the rest of the API should adopt the same
+  convention, or whether the split is intentional and should just be
+  documented.
+
+**500 handling** — no custom exception handler exists anywhere. Verified
+directly: a forced unhandled exception returns a bare `500 Internal Server
+Error` with no stack trace, using pure Starlette defaults (`app.debug` is
+never set to `True`). Fine for not leaking internals, but there's also no
+logging/monitoring hook — an unhandled exception currently just vanishes
+from the operator's perspective except as a generic 500 in the client.
+
+**Dependency management is inconsistent**: `services/api/requirements.txt`
+is stale (only lists `fastapi`, `uvicorn`, `python-multipart` — left over
+from before the auth work). `pyproject.toml` is the real, current dependency
+list and what `uv sync` actually installs from. The two files have drifted.
+
+**No test suite** exists anywhere in `services/api` — the missing
+`import csv`/`import io` bug in the older analyzer router (found and fixed
+this session) sat there undetected specifically because nothing exercised
+that code path automatically.
+
+## `packages/shared/`
+
+- `types/` — TypeScript types shared across the frontend apps (npm workspace
+  package `@repo/shared-types`), from an earlier milestone.
+- `incident_validation/` — a plain Python package (no build config, imported
+  via `sys.path` insertion) holding the CSV validation rules for the
+  incident data. Imported by `scripts/analyze.py`, `scripts/seed_incidents.py`,
+  and `services/api/app/incidents/controller.py`. This is the only Python
+  code shared across more than one consumer in the repo.
+
+## `scripts/`
+
+Standalone CLI scripts, run outside the FastAPI process:
+- `analyze.py` — validates and summarizes a CSV of incidents, prints to
+  console, optional CSV export. Pure stdlib + the shared validation package.
+- `seed_incidents.py` — loads that same CSV into the *live* `incidents`
+  TinyDB table (imports `services/api/database.py` and `incident_models.py`
+  directly), applying field transformations. Idempotent by design.
+- `incidents-brasaland.csv` — the historical test data both scripts read.
+
+Both scripts import from `services/api` and/or `packages/shared` via
+`sys.path` manipulation rather than proper installed packages — works, but
+means there's no dependency isolation between "a script someone runs by
+hand" and "the live API," and no `__init__.py`/packaging boundary enforcing
+that.
+
+## `uis/` — four independent Next.js apps
+
+All four are separate `package.json`/`node_modules`/dev servers. None of
+them import code from each other or from `services/api` directly — every
+cross-app or cross-service interaction happens over HTTP.
+
+**`backoffice`** (port 3000) — the only app with `login`, `register`,
+`forgot-password`, `reset-password` pages. Everything else lives under a
+`(protected)` route group: an operations overview page, the supplier
+directory, and account/profile pages. This is where a token is actually
+issued.
+
+**`incidents`** (port 3001, pinned in `package.json`) — verified in depth
+this session. No login of its own. `components/RouteGuard.tsx` wraps the
+entire app at the layout level: on mount, it looks for a token handed off
+via a URL fragment (`#token=...`) from Backoffice, claims it into
+`localStorage`, and otherwise redirects to
+`backoffice/login?returnTo=<this-page>` if there's no valid token. Pages: `/`
+(CSV analyzer, calls the older `/api/incidents/analyze` + `/results/export`),
+`/register`, `/list`, `/summary` (all calling the newer `routes/incidents.py`
+endpoints). `lib/api.ts` centralizes all `fetch` calls through an
+`authFetch()` wrapper that attaches the token and clears it + redirects on a
+401.
+
+**`talent-pipeline-tracker`** — has its own `components/RouteGuard.tsx` and
+`lib/auth.ts` (confirmed present, not deeply inspected this session), no
+login pages of its own — same no-own-login, redirect-to-Backoffice pattern
+as `incidents`. Candidate CRUD pages.
+
+**`website`** — public-facing, no auth guard, no `RouteGuard`. Home page
+plus a job-application page (`app/apply`). Not inspected deeply this
+session — worth checking directly rather than assuming it has no backend
+calls at all.
+
+## Cross-app auth handoff (the one genuinely tricky piece of wiring)
+
+1. A protected page in `incidents` or `talent-pipeline-tracker` loads with no
+   valid token → full-page redirect to `backoffice`'s `/login?returnTo=<url>`.
+2. User logs in on `backoffice`.
+3. `backoffice` redirects back to `returnTo`, appending the token as a URL
+   fragment (`#token=...`) — a fragment, not a query param, so it's never
+   sent to the server in any request.
+4. The receiving app's `RouteGuard` reads the fragment on mount, stores the
+   token in `localStorage`, and strips it from the URL.
+
+This means a 401 from the API, an expired token, and "never logged in" all
+funnel through the exact same redirect path — there's no separate handling
+for "your session just expired mid-action" versus "you were never signed
+in," which may be worth a look as part of the audit.
+
+## Starting points, mapped to the 8 audit categories
+
+The audit categories below are what this document is being handed to
+Copilot alongside. Everything under `incidents` (backend routers + the
+`uis/incidents` frontend + `scripts/`) is verified firsthand; everything
+about `backoffice`, `talent-pipeline-tracker`, and `website` is unverified
+this session — treat those as "audit from scratch," not "confirm my notes."
+
+**1. Missing try/catch.** In `services/api`, individual TinyDB calls inside
+route handlers (`incidents_table.insert(...)`, `.update(...)`, `.get(...)`,
+etc., across `routes/suppliers.py` and `routes/incidents.py`) are not
+individually wrapped — a write failure falls through to FastAPI's generic
+500. That's a deliberate, acceptable pattern for *this* project (see the
+500 note above), not necessarily a bug, but worth confirming it's actually
+intentional everywhere it appears rather than an oversight in some routes
+and a deliberate choice in others. In `scripts/seed_incidents.py`, the
+`incidents_table.insert()` call inside the main loop has no try/catch of
+its own either — a mid-run DB failure would currently crash the whole
+script (see point 8 below on whether that's actually the right behavior).
+
+**2. Overly broad catch.** None observed in `routes/incidents.py` or
+`incident_models.py` — the one manual validation catch there
+(`_validate_or_400`) is scoped to exactly `pydantic.ValidationError`, not a
+bare `except Exception`. Not checked in `routes/suppliers.py`,
+`routes/auth.py`, `routes/users.py`, or any of the three unverified
+frontend apps — worth checking those specifically for a `try` wrapping an
+entire function body instead of just the risky call inside it.
+
+**3. Silent failures.** None introduced in the incident manager work. One
+thing to distinguish from an actual bug: `scripts/analyze.py` and
+`seed_incidents.py` both deliberately catch a bad `satisfaction_score` or
+unparseable `date` *per row*, skip that row, and report it to the console
+at the end — that's the intended design (invalid records must be reported,
+never silently dropped), not a silent failure, as long as the console
+report is actually happening for every skip path. Worth confirming there's
+no code path where a row gets skipped without a corresponding line in the
+final report.
+
+**4. Raw error exposure.** Confirmed clean for genuine unhandled exceptions
+(tested directly — see the 500 note above). Not yet confirmed: whether
+`routes/suppliers.py`, `routes/auth.py`, or `routes/users.py` ever do
+something like `HTTPException(500, detail=str(e))` or similar, which would
+turn an internal exception message into a client-visible response. This is
+probably the single highest-value thing for Copilot to grep for across the
+whole `services/api` tree — a raw `str(e)`, `str(exc)`, or `traceback`
+anywhere in an `HTTPException` or a response body.
+
+**5. Sensitive data leaks.** `security.py` has a hardcoded dev fallback for
+`JWT_SECRET_KEY` ("dev-secret-change-me") — not a leak by itself, but worth
+flagging alongside this audit since a fallback secret that's easy to forget
+to override is adjacent to the same risk category. Passwords are hashed via
+`passlib[bcrypt]` (not stored plaintext) as far as verified. Not checked:
+whether any logging statement anywhere (backend or frontend) prints a full
+request body or headers, which would include a password field on a failed
+login attempt or the JWT itself on an auth failure.
+
+**6. Missing loading/error UI states.** Fully implemented as a three-state
+pattern (loading / error-with-retry / empty-or-data) on `uis/incidents`'
+`/list` and `/summary` pages, and a loading + error state on `/register`.
+Not verified on any page in `backoffice`, `talent-pipeline-tracker`, or
+`website` — the `(protected)` pages in `backoffice` in particular (supplier
+directory, account/profile pages) are good candidates to check first, since
+they're the most data-fetch-heavy pages outside `incidents`.
+
+**7. No user call to action.** `uis/incidents`' list and summary pages both
+show a "Try again" button on error. The registration form shows an error
+banner without a distinct retry button, but the form itself stays fillable
+and submittable, so the recovery path exists even without an explicit
+"Retry" label — worth Copilot's judgment call on whether that counts.
+Unverified elsewhere.
+
+**8. Missing `sys.exit` on script failure.** Both `scripts/analyze.py` and
+`scripts/seed_incidents.py` explicitly `sys.exit(1)` for the one failure
+mode they proactively check (file not found). Neither has a top-level
+try/except around its main logic — which means an unexpected failure (a
+corrupt CSV, a database write error) currently relies on Python's default
+behavior of exiting non-zero on an uncaught exception, rather than an
+explicit, intentional `sys.exit(1)` with a clean message. That default
+behavior is *technically* correct (it does exit non-zero) but produces a
+raw Python traceback on stdout/stderr instead of a clean failure message —
+likely a legitimate finding even though it wouldn't exit 0. Separately:
+per-row skips (bad date, bad score, unmapped category) are intentional
+design, not failures — those correctly continue and exit 0 at the end, with
+every skip reported to console. Don't conflate the two.

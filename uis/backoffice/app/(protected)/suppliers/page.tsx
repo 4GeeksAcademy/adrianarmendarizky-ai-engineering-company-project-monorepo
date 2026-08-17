@@ -140,6 +140,7 @@ export default function SuppliersPage() {
   const [editingRateId, setEditingRateId] = useState<number | null>(null);
   const [rateDraft, setRateDraft] = useState("");
   const [rowBusyId, setRowBusyId] = useState<number | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
 
   async function loadSuppliers() {
     setLoading(true);
@@ -246,6 +247,7 @@ export default function SuppliersPage() {
     if (!rateDraft || Number.isNaN(rate) || rate <= 0) return;
 
     setRowBusyId(id);
+    setRowErrors((prev) => ({ ...prev, [id]: "" }));
     try {
       const res = await authFetch(`/suppliers/${id}/rate`, {
         method: "PATCH",
@@ -256,8 +258,11 @@ export default function SuppliersPage() {
       const updated: Supplier = await res.json();
       setSuppliers((prev) => prev.map((s) => (s.id === id ? updated : s)));
       setEditingRateId(null);
-    } catch {
-      // Leave the row in edit mode so the person can just try again.
+    } catch (err) {
+      setRowErrors((prev) => ({
+        ...prev,
+        [id]: err instanceof Error ? err.message : "Could not save rate. Try again.",
+      }));
     } finally {
       setRowBusyId(null);
     }
@@ -266,6 +271,7 @@ export default function SuppliersPage() {
   async function toggleStatus(supplier: Supplier) {
     const nextStatus: StatusValue =
       supplier.status === "active" ? "suspended" : "active";
+    setRowErrors((prev) => ({ ...prev, [supplier.id]: "" }));
     setRowBusyId(supplier.id);
     try {
       const res = await authFetch(
@@ -281,8 +287,11 @@ export default function SuppliersPage() {
       setSuppliers((prev) =>
         prev.map((s) => (s.id === supplier.id ? updated : s))
       );
-    } catch {
-      // Row just keeps its old status if this fails.
+    } catch (err) {
+      setRowErrors((prev) => ({
+        ...prev,
+        [supplier.id]: err instanceof Error ? err.message : "Could not update status. Try again.",
+      }));
     } finally {
       setRowBusyId(null);
     }
@@ -482,9 +491,16 @@ export default function SuppliersPage() {
         </div>
 
         {loadError && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {loadError}
-          </p>
+          <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p>{loadError}</p>
+            <button
+              type="button"
+              onClick={loadSuppliers}
+              className="mt-2 rounded border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
+            >
+              Retry
+            </button>
+          </div>
         )}
 
         <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
@@ -595,6 +611,11 @@ export default function SuppliersPage() {
                       >
                         {s.status === "active" ? "Suspend" : "Activate"}
                       </button>
+                      {rowErrors[s.id] && (
+                        <p className="mt-1 text-right text-xs text-red-600">
+                          {rowErrors[s.id]}
+                        </p>
+                      )}
                     </td>
                   </tr>
                 ))}

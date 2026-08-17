@@ -45,7 +45,7 @@ export default function CandidateDetailPage() {
         setCandidate(data);
         setNotes(data.notes ?? []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        setError("Could not load candidate details. Please try again.");
       } finally {
         setLoading(false);
       }

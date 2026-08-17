@@ -13,6 +13,7 @@ import logging
 import os
 
 import resend
+from resend.exceptions import ResendError
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,10 @@ def send_password_reset_email(to_email: str, reset_url: str) -> None:
                 ),
             }
         )
-    except Exception:
+    except ResendError:
         # Logged for us to debug, never raised -- see module docstring.
-        logger.exception("Failed to send password reset email to %s", to_email)
+        masked_email = "***"
+        if "@" in to_email:
+            _, domain = to_email.rsplit("@", 1)
+            masked_email = f"***@{domain}"
+        logger.exception("Failed to send password reset email to %s", masked_email)

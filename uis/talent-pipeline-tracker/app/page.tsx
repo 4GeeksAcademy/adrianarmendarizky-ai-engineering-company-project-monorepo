@@ -31,7 +31,7 @@ function CandidateListInner() {
         const response = await getCandidates();
         setCandidates(response.data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        setError("Could not load candidates. Please try again.");
       } finally {
         setLoading(false);
       }

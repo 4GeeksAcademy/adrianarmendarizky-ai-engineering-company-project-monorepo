@@ -5,6 +5,9 @@ HTTP endpoints for the incident analysis feature:
   POST /api/incidents/analyze          — upload a CSV, get the summary back as JSON
   GET  /api/incidents/results/export   — download the last summary as a CSV
 """
+import csv
+import io
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
@@ -20,10 +23,11 @@ router = APIRouter(
 
 @router.post("/analyze")
 async def analyze_incidents(file: UploadFile = File(...)):
-    file_bytes = await file.read()
-
     try:
+        file_bytes = await file.read()
         result = controller.run_analysis(file.filename, file_bytes)
+    except OSError:
+        raise HTTPException(status_code=400, detail="Could not read the uploaded file.")
     except controller.EmptyFileError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except controller.InvalidCsvError as exc:
