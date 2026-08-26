@@ -1,7 +1,8 @@
 # Brasaland Digital — Backend API (`services/api/`)
 
-Single FastAPI app (`main:app`) covering user accounts, suppliers, and
-after-sales incident analysis for Brasaland Digital.
+Single FastAPI app (`main:app`) covering user accounts, suppliers,
+after-sales incident analysis, and ingredient inventory for Brasaland
+Digital.
 
 ## Setup
 
@@ -35,6 +36,7 @@ repo.
 | `RESEND_FROM_EMAIL` | Defaults to `onboarding@resend.dev` (can only deliver to your own Resend account's email without a verified domain) |
 | `FRONTEND_URL` | Backoffice's own URL — used to build the link inside reset emails |
 | `PASSWORD_RESET_EXPIRE_MINUTES` | Reset token lifetime (default 30) |
+| `DATABASE_URL` | Supabase (Postgres) connection string for inventory — see the [Inventory](#inventory) section below for the exact format this needs |
 
 ### Running in GitHub Codespaces
 
@@ -124,28 +126,70 @@ No database — the last analysis lives in memory and resets on restart.
 
 ---
 
+## Inventory
+
+Ingredient stock across Brasaland's locations, replacing per-location
+WhatsApp/spreadsheet tracking with a single source of truth. Uses a
+**second database** — Supabase (Postgres) via SQLModel — kept entirely
+separate from the TinyDB tables above. Every order still references the
+TinyDB user who created it (`user_uuid`), so no user data is duplicated
+into Postgres.
+
+**Business rules:** `current_stock` is always computed
+(`SUM(entries) − SUM(exits)`), never stored or directly editable; an
+outbound order that would push stock below zero is rejected with
+`HTTP 400` before anything is written; `reason` on an outbound order must
+be `"consumption"` or `"waste"`.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/inventory/products` | List all ingredients with computed `current_stock` |
+| POST | `/inventory/products` | Create an ingredient (requires auth) |
+| GET | `/inventory/products/{id}` | One ingredient with current stock (404 if missing) |
+| POST | `/inventory/orders/inbound` | Log a delivery — adds stock (requires auth) |
+| POST | `/inventory/orders/outbound` | Log consumption/waste — removes stock (requires auth); 400 if it would go negative |
+| GET | `/inventory/orders` | Combined feed of every inbound + outbound order, with ingredient name/sku attached |
+
+### Supabase setup
+
+Requires `DATABASE_URL` in `.env` (Supabase dashboard → Connect → Direct →
+Transaction pooler → URI). **This project uses psycopg3, not psycopg2** —
+the connection string's scheme must be `postgresql+psycopg://`, not the
+plain `postgresql://` Supabase gives you by default; rewrite it before
+pasting it in. Tables are created and seeded automatically on startup (see
+`inventory_models.py` / `seed_inventory.py`) — seeding is silently skipped,
+with no error, until `DATABASE_URL` is set and at least one TinyDB user has
+been registered.
+
+---
+
 ## Project structure
 
 ```
 services/api/
 ├── main.py                # Single FastAPI entry point (uvicorn main:app)
-├── database.py            # TinyDB connection + all tables
+├── database.py            # TinyDB connection/tables + Supabase (SQLModel) engine/session
 ├── security.py            # Password hashing, JWT, reset-token hashing
 ├── email_service.py       # Resend integration
 ├── dependencies.py        # get_current_user
 ├── user_models.py         # Pydantic models (User, Profile, auth requests)
 ├── user_service.py        # User/Profile business logic
 ├── password_service.py    # Password reset/change business logic
-├── models.py              # Supplier Pydantic models
+├── supplier_models.py     # Supplier Pydantic models
 ├── seed.py                # Loads suppliers from CONTEXT-brasaland.md
+├── inventory_models.py    # SQLModel ORM classes (Ingredient, IngredientEntry, IngredientExit)
+├── inventory_schemas.py   # Pydantic request/response schemas for inventory
+├── seed_inventory.py      # Loads minimum inventory seed data from CONTEXT-brasaland.md
 ├── routes/
 │   ├── auth.py            # /auth/*
 │   ├── users.py           # /users/*
 │   ├── profiles.py        # /profiles/*
-│   └── suppliers.py       # /suppliers/*
+│   ├── suppliers.py       # /suppliers/*
+│   ├── incidents.py       # /api/incidents/* (persisted incident management, /summary)
+│   └── inventory.py       # /inventory/*
 ├── app/
 │   └── incidents/
 │       ├── controller.py  # Imports scripts/analyze.py directly
-│       └── routes.py      # /api/incidents/*
+│       └── routes.py      # /api/incidents/* (CSV upload/export, older style)
 └── db.json                # TinyDB data file (generated, gitignored)
 ```
