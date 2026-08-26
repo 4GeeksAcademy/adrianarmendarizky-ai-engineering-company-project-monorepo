@@ -1,19 +1,34 @@
-# Backoffice Dashboard, Incident Analysis, and Talent Pipeline Tracker Apps
+# Brasaland Back Office
 
-## How to run / verify
- 
-Five terminals: the backend, plus one per protected app.
- 
+Internal admin app — also hosts the shared login/account views used by
+Incidents and Talent Pipeline Tracker (they redirect here when a session
+is missing).
+
+Requires `NEXT_PUBLIC_API_URL` in `.env.local`, pointing at `services/api`
+(defaults to `http://localhost:8000` if unset, so this is optional for
+local dev against a default-port backend).
+
+| Route | Access |
+|---|---|
+| `/login`, `/register`, `/forgot-password`, `/reset-password` | Public |
+| `/`, `/suppliers`, `/account/profile`, `/account/change-password` | Protected |
+| `/inventory/products` | Protected — ingredients with live, color-coded stock |
+| `/inventory/orders/inbound` | Protected — log a delivery |
+| `/inventory/orders/outbound` | Protected — log consumption/waste |
+| `/inventory/orders` | Protected — read-only order history |
+
+Every protected route is covered by `app/(protected)/layout.tsx`'s route
+guard — nothing page-specific needed for auth. All network calls go
+through `lib/api.ts` (auth, profile, password) or `lib/inventory.ts`
+(inventory) — no component calls `fetch()` directly.
+
+## Getting started
+
 ```bash
-# backend
-cd services/api && uv sync && uv run uvicorn main:app --reload
- 
-# each frontend app, its own terminal
-cd uis/backoffice && npm run dev
-cd uis/incidents && npm run dev
-cd uis/talent-pipeline-tracker && npm run dev
+npm install
+npm run dev
 ```
- 
-Each app needs its own `.env.local` with `NEXT_PUBLIC_API_URL` — `services/api`'s address for Backoffice and Incidents, and `https://playground.4geeks.com/tracker/api/v1` specifically for Talent Pipeline Tracker.
- 
-Verification: visit Incidents or Talent Pipeline Tracker logged out — both should redirect to Backoffice's `/login`. Log in there, and you should land back on whichever app you actually started from, already authenticated, with no manual token copying required. From there: Backoffice's suppliers page and account/profile page, Incidents' upload-and-export flow, and Talent Pipeline Tracker's candidate list should all work normally with a real session, and all three should reject access with none.
+
+Open [http://localhost:3000](http://localhost:3000). Requires
+`services/api` running (see its own README) — every page here depends on
+that backend.
