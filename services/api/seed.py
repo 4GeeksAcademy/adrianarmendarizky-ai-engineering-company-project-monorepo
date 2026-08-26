@@ -16,7 +16,7 @@ import sys
 from datetime import datetime, timezone
 
 from database import suppliers_table
-from models import SupplierCreate
+from supplier_models import SupplierCreate
 
 # This is the exact data from CONTEXT-brasaland.md -- Lucia's current
 # spreadsheet, about to become the single source of truth.
