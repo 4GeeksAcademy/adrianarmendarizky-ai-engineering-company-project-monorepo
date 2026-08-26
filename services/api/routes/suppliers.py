@@ -14,7 +14,7 @@ from tinydb import Query as TinyDBQuery
 
 from database import suppliers_table
 from dependencies import get_current_user
-from models import (
+from supplier_models import (
     Category,
     Country,
     Supplier,

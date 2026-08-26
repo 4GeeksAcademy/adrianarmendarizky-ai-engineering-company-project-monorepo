@@ -2,7 +2,8 @@
 main.py -- FastAPI application entry point for the Brasaland API.
 
 This is now the ONE entry point for the whole backend -- suppliers,
-incidents, and users/auth/profiles all live under this single app.
+incidents, users/auth/profiles, and inventory all live under this
+single app.
 Run it with:
     uvicorn main:app --reload
 
@@ -24,12 +25,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.incidents.routes import router as incidents_analyzer_router
+from database import init_inventory_db
+from routes.inventory import router as inventory_router
 from routes.auth import router as auth_router
 from routes.incidents import router as incidents_router
 from routes.profiles import router as profiles_router
 from routes.suppliers import router as suppliers_router
 from routes.users import router as users_router
 from seed import seed_database
+from seed_inventory import seed_inventory
 
 
 @asynccontextmanager
@@ -38,13 +42,18 @@ async def lifespan(app: FastAPI):
     # table and is safe to call every time -- it skips itself if that
     # table already has data.
     seed_database()
+    # Same idea, but for the new Supabase side: create the inventory
+    # tables if they don't exist yet, then seed them if they're empty.
+    # Both no-op quietly if DATABASE_URL isn't set yet.
+    init_inventory_db()
+    seed_inventory()
     yield
 
 
 app = FastAPI(
     title="Brasaland API",
-    description="Single source of truth for Brasaland's suppliers, after-sales incidents, and user accounts.",
-    version="0.2.0",
+    description="Single source of truth for Brasaland's suppliers, after-sales incidents, user accounts, and ingredient inventory.",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -71,6 +80,7 @@ app.include_router(suppliers_router)
 # way, but keeping literal paths first is the clearer convention.
 app.include_router(incidents_analyzer_router)
 app.include_router(incidents_router)
+app.include_router(inventory_router)
 
 
 @app.get("/")
