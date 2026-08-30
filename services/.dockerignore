@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env*
+tests/
+*.log
+
+# A local .venv (from running `uv sync` outside Docker) must never be
+# copied into the image -- it would be built for the wrong platform, and
+# the `COPY api/ .` step in the Dockerfile would otherwise pull it in
+# wholesale since it copies the whole api/ directory.
+.venv/

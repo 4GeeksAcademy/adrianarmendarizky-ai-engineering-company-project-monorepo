@@ -1,0 +1,13 @@
+# Required minimums per the brief -- unprefixed patterns match at any
+# depth, so these cover website/node_modules and backoffice/node_modules
+# both, not just a top-level one.
+node_modules/
+.next/
+.env*
+*.log
+
+# Out of scope for this ticket (only website + backoffice are
+# containerized) -- excluding them keeps the build context smaller and
+# faster to send to the Docker daemon.
+incidents/
+talent-pipeline-tracker/

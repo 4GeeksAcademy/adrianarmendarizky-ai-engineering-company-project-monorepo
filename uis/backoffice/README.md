@@ -4,46 +4,34 @@ Internal admin app — also hosts the shared login/account views used by
 Incidents and Talent Pipeline Tracker (they redirect here when a session
 is missing).
 
-Requires `NEXT_PUBLIC_API_URL` in `.env.local`, pointing at `services/api`.
+Requires `NEXT_PUBLIC_API_URL` in `.env.local`, pointing at `services/api`
+(defaults to `http://localhost:8000` if unset, so this is optional for
+local dev against a default-port backend).
 
 | Route | Access |
 |---|---|
 | `/login`, `/register`, `/forgot-password`, `/reset-password` | Public |
 | `/`, `/suppliers`, `/account/profile`, `/account/change-password` | Protected |
+| `/inventory/products` | Protected — ingredients with live, color-coded stock |
+| `/inventory/orders/inbound` | Protected — log a delivery |
+| `/inventory/orders/outbound` | Protected — log consumption/waste |
+| `/inventory/orders` | Protected — read-only order history |
 
----
+Every protected route is covered by `app/(protected)/layout.tsx`'s route
+guard — nothing page-specific needed for auth. All network calls go
+through `lib/api.ts` (auth, profile, password) or `lib/inventory.ts`
+(inventory) — no component calls `fetch()` directly.
 
-## Getting Started
-
-First, run the development server:
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Requires
+`services/api` running (see its own README) — every page here depends on
+that backend.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Running via `docker compose up` instead? This app answers on port 3001
+there, not 3000 — see `uis/README.md` for why.

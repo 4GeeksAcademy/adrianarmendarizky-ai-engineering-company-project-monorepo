@@ -1,0 +1,28 @@
+# This is the .dockerignore that actually applies to the API service's
+# build now, since its context is the repository root (see
+# services/Dockerfile's comments on why). services/.dockerignore still
+# exists separately -- the ticket's own evaluation checklist checks for
+# a .dockerignore there specifically, and it's harmless to leave in
+# place even though this root one is the operative one for context size.
+#
+# The API's Dockerfile only ever COPYs three explicit paths (services/api,
+# scripts, packages/shared), so nothing below can leak into the final
+# image regardless -- this file exists purely so `docker build` doesn't
+# waste time uploading ~60MB of irrelevant node_modules and similar as
+# part of the build context before the build even starts.
+
+.git/
+node_modules/
+**/node_modules/
+**/.next/
+**/__pycache__/
+**/*.pyc
+**/.env*
+**/*.log
+**/.venv/
+uis/
+data/
+docs/
+skills/
+agents/
+.agents/

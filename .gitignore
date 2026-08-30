@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 workspace.tar.gz
 *.tar.gz
+
+# Docker Compose environment variables -- real secrets/connection
+# strings live only here, never committed.
+.env
+!.env.example
