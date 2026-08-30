@@ -14,6 +14,10 @@ uv run uvicorn main:app --reload
 Seeds supplier data automatically on first run if empty. Interactive docs
 at `http://localhost:8000/docs`.
 
+Or run the whole platform (this API plus both frontends) via
+`docker compose up --build` from the repository root — see the root
+`README.md`.
+
 ### Environment variables (`.env`)
 
 This app requires JWT_SECRET_KEY to be set — it will not start without it

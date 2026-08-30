@@ -32,3 +32,6 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000). Requires
 `services/api` running (see its own README) — every page here depends on
 that backend.
+
+Running via `docker compose up` instead? This app answers on port 3001
+there, not 3000 — see `uis/README.md` for why.
