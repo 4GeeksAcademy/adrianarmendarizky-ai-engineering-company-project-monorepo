@@ -1,0 +1,54 @@
+services:
+  api:
+    build:
+      # Repo root, not ./services -- the API needs scripts/ and
+      # packages/shared/ as build-context siblings (see
+      # services/Dockerfile's comments).
+      context: .
+      dockerfile: services/Dockerfile
+    container_name: brasaland-api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/api:/workspace/services/api
+      # Anonymous volume: keeps the image's own .venv instead of it
+      # being shadowed by the bind mount above (or by nothing, if no
+      # local .venv exists on the host).
+      - /workspace/services/api/.venv
+      - ./scripts:/workspace/scripts
+      - ./packages/shared:/workspace/packages/shared
+    networks:
+      - brasaland-network
+
+  ui:
+    build:
+      # Repo root, not ./uis -- backoffice's dashboard page imports
+      # directly from the monorepo's root-level src/ (see
+      # uis/Dockerfile's comments).
+      context: .
+      dockerfile: uis/Dockerfile
+    container_name: brasaland-ui
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - ./uis/website:/workspace/uis/website
+      - /workspace/uis/website/node_modules
+      - /workspace/uis/website/.next
+      - ./uis/backoffice:/workspace/uis/backoffice
+      - /workspace/uis/backoffice/node_modules
+      - /workspace/uis/backoffice/.next
+      - ./src:/workspace/src
+    depends_on:
+      - api
+    networks:
+      - brasaland-network
+
+networks:
+  brasaland-network:
+    name: brasaland-network
+    driver: bridge

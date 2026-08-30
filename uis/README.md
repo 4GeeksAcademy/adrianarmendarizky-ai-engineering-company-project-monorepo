@@ -1,34 +1,37 @@
-# Brasaland Back Office
+# Brasaland UIs
 
-Internal admin app — also hosts the shared login/account views used by
-Incidents and Talent Pipeline Tracker (they redirect here when a session
-is missing).
+Four independent Next.js apps — separate `package.json`, `node_modules`,
+and dev server each, no shared workspace tooling. Only `backoffice` has
+its own login (`/login`, `/register`); `incidents` and
+`talent-pipeline-tracker` have none of their own and redirect there,
+getting a token handed back (see `uis/backoffice/README.md` for that
+handoff).
 
-Requires `NEXT_PUBLIC_API_URL` in `.env.local`, pointing at `services/api`
-(defaults to `http://localhost:8000` if unset, so this is optional for
-local dev against a default-port backend).
+| App | Local dev port | Purpose |
+|---|---|---|
+| `website` | 3000 (default, unpinned in `package.json`) | Public-facing site, job applications |
+| `backoffice` | 3000 (pinned) | Internal admin — auth, suppliers, inventory, accounts |
+| `incidents` | 3001 (pinned) | CSV analyzer + incident manager |
+| `talent-pipeline-tracker` | 3002 (pinned) | Candidate tracking |
 
-| Route | Access |
+`website` and `backoffice` both land on 3000 by default — they were never
+set up to run side by side locally.
+
+## Docker (website + backoffice only)
+
+`docker compose up` from the repository root containerizes `website` and
+`backoffice` together in a single container, per ticket infra-40 — see
+the root `docker-compose.yml` and `uis/Dockerfile`. Inside that setup,
+ports are reassigned so both apps can run at once:
+
+| App | Docker port |
 |---|---|
-| `/login`, `/register`, `/forgot-password`, `/reset-password` | Public |
-| `/`, `/suppliers`, `/account/profile`, `/account/change-password` | Protected |
-| `/inventory/products` | Protected — ingredients with live, color-coded stock |
-| `/inventory/orders/inbound` | Protected — log a delivery |
-| `/inventory/orders/outbound` | Protected — log consumption/waste |
-| `/inventory/orders` | Protected — read-only order history |
+| `website` | 3000 |
+| `backoffice` | 3001 |
 
-Every protected route is covered by `app/(protected)/layout.tsx`'s route
-guard — nothing page-specific needed for auth. All network calls go
-through `lib/api.ts` (auth, profile, password) or `lib/inventory.ts`
-(inventory) — no component calls `fetch()` directly.
-
-## Getting started
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). Requires
-`services/api` running (see its own README) — every page here depends on
-that backend.
+**This means `docker compose up` and `cd uis/incidents && npm run dev`
+can't run at the same time** — both would try to bind host port 3001.
+`incidents` and `talent-pipeline-tracker` aren't in Docker's scope (this
+ticket never touches them), so they still run locally as usual — just not
+alongside the Dockerized UI container. This is a known, accepted tradeoff
+of infra-40's scope, not a bug.
