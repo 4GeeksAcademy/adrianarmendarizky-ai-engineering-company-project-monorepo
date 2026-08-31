@@ -1,0 +1,274 @@
+{
+  "$comment": "Brasaland telemetry contract. See telemetry-plan.md for the reasoning behind every decision here. Envelope fields are shared by every event; 'properties' is allow-listed per event_type — no additional properties are ever permitted.",
+  "envelope": {
+    "eventId": { "type": "string", "format": "uuid", "nullable": false },
+    "timestamp": { "type": "string", "format": "date-time", "nullable": false, "description": "ISO 8601, UTC, set at moment of capture" },
+    "sessionId": { "type": "string", "nullable": false, "description": "Generated once per frontend app load, independent of auth state" },
+    "userId": { "type": "string", "nullable": true, "description": "Null until login succeeds" },
+    "event_type": { "type": "string", "nullable": false, "enum": [
+      "inbound_order_created",
+      "outbound_order_created",
+      "stock_waste_registered",
+      "stock_threshold_triggered",
+      "direct_stock_edit_rejected",
+      "ingredient_price_variance_detected",
+      "product_created",
+      "user_login_succeeded",
+      "user_login_failed",
+      "password_reset_requested",
+      "password_changed",
+      "frontend_error_occurred",
+      "api_latency_recorded",
+      "section_visited"
+    ]},
+    "schemaVersion": { "type": "integer", "nullable": false, "description": "Starts at 1 per event_type; bump only on a breaking change to that event's properties" },
+    "requestId": { "type": "string", "format": "uuid", "nullable": true, "description": "Null for events with no single corresponding backend call" },
+    "properties": { "type": "object", "nullable": false, "additionalProperties": false, "description": "See events[].properties for the allowlist per event_type" }
+  },
+  "events": [
+    {
+      "event_type": "inbound_order_created",
+      "category": "inventory",
+      "mandatory": true,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "services/api/routes/inventory.py:104-121 (POST /inventory/orders/inbound)",
+      "hypothesis": "We need to know how much and what is being purchased, by location and supplier",
+      "decision": "Consolidate purchasing across locations to negotiate better prices (Lucía)",
+      "pii": false,
+      "properties": {
+        "location_id": { "type": "integer", "required": true },
+        "country": { "type": "string", "enum": ["CO", "US"], "nullable": true, "required": true, "description": "Null until location registry is resolved — see plan §2" },
+        "product_id": { "type": "integer", "required": true },
+        "product_category": { "type": "string", "required": true },
+        "quantity": { "type": "number", "required": true },
+        "unit": { "type": "string", "required": true },
+        "currency": { "type": "string", "enum": ["COP", "USD"], "nullable": true, "required": true },
+        "supplier_name": { "type": "string", "required": true }
+      }
+    },
+    {
+      "event_type": "outbound_order_created",
+      "category": "inventory",
+      "mandatory": true,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "services/api/routes/inventory.py:124-151 (POST /inventory/orders/outbound, reason=consumption)",
+      "hypothesis": "We need to know which ingredients are consumed most, and at what rate, by location",
+      "decision": "Adjust the automatic supplier order suggestion (Felipe)",
+      "pii": false,
+      "properties": {
+        "location_id": { "type": "integer", "required": true },
+        "country": { "type": "string", "enum": ["CO", "US"], "nullable": true, "required": true },
+        "product_id": { "type": "integer", "required": true },
+        "product_category": { "type": "string", "required": true },
+        "quantity": { "type": "number", "required": true },
+        "unit": { "type": "string", "required": true }
+      }
+    },
+    {
+      "event_type": "stock_waste_registered",
+      "category": "inventory",
+      "mandatory": true,
+      "status": "partial — requires new optional waste_reason field on IngredientExitCreate (default None)",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "services/api/routes/inventory.py:124-151 (POST /inventory/orders/outbound, reason=waste)",
+      "hypothesis": "We need to know how much product is lost, why, and at which location",
+      "decision": "Prioritise waste audits at the worst-performing locations (Felipe)",
+      "pii": false,
+      "properties": {
+        "location_id": { "type": "integer", "required": true },
+        "country": { "type": "string", "enum": ["CO", "US"], "nullable": true, "required": true },
+        "product_id": { "type": "integer", "required": true },
+        "product_category": { "type": "string", "required": true },
+        "quantity": { "type": "number", "required": true },
+        "unit": { "type": "string", "required": true },
+        "waste_reason": { "type": "string", "enum": ["expired", "kitchen_error", "theft_suspected"], "nullable": true, "required": true }
+      }
+    },
+    {
+      "event_type": "stock_threshold_triggered",
+      "category": "inventory",
+      "mandatory": true,
+      "status": "blocked — requires new optional minimum_stock field on Ingredient (default None)",
+      "schemaVersion": 1,
+      "delivery": "stream",
+      "source": "not yet implementable — no minimum_stock concept exists on Ingredient",
+      "hypothesis": "We need to know how often a location runs short of a key ingredient",
+      "decision": "Adjust the minimum threshold or the replenishment frequency for that product",
+      "pii": false,
+      "properties": {
+        "location_id": { "type": "integer", "required": true },
+        "country": { "type": "string", "enum": ["CO", "US"], "nullable": true, "required": true },
+        "product_id": { "type": "integer", "required": true },
+        "product_category": { "type": "string", "required": true },
+        "current_stock": { "type": "number", "required": true },
+        "minimum_stock": { "type": "number", "required": true }
+      }
+    },
+    {
+      "event_type": "direct_stock_edit_rejected",
+      "category": "inventory",
+      "mandatory": true,
+      "status": "blocked — no endpoint accepts a stock-modifying field to reject today",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "not yet implementable",
+      "hypothesis": "We need to know if staff are attempting to bypass traceability controls",
+      "decision": "Reinforce training or permissions at the locations where this happens most (Jake)",
+      "pii": false,
+      "properties": {
+        "location_id": { "type": "integer", "required": true },
+        "country": { "type": "string", "enum": ["CO", "US"], "nullable": true, "required": true },
+        "product_id": { "type": "integer", "required": true },
+        "attempted_field": { "type": "string", "required": true },
+        "attempted_value": { "type": "number", "required": true }
+      }
+    },
+    {
+      "event_type": "ingredient_price_variance_detected",
+      "category": "inventory",
+      "mandatory": true,
+      "status": "blocked — requires new optional unit_cost field on IngredientEntryCreate plus a historical average source",
+      "schemaVersion": 1,
+      "delivery": "stream",
+      "source": "not yet implementable — no cost data is captured anywhere today",
+      "hypothesis": "We need to know when a key ingredient rises in price abnormally",
+      "decision": "Alert Lucía and Mariana to renegotiate or find an alternate supplier",
+      "pii": false,
+      "properties": {
+        "location_id": { "type": "integer", "required": true },
+        "country": { "type": "string", "enum": ["CO", "US"], "nullable": true, "required": true },
+        "product_id": { "type": "integer", "required": true },
+        "product_category": { "type": "string", "required": true },
+        "supplier_name": { "type": "string", "required": true },
+        "unit_cost": { "type": "number", "required": true },
+        "historical_avg_cost": { "type": "number", "required": true },
+        "variance_pct": { "type": "number", "required": true },
+        "currency": { "type": "string", "enum": ["COP", "USD"], "nullable": true, "required": true }
+      }
+    },
+    {
+      "event_type": "product_created",
+      "category": "business",
+      "mandatory": false,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "services/api/routes/inventory.py:82-93 (POST /inventory/products)",
+      "hypothesis": "We need to know how often new SKUs are added",
+      "decision": "Tells us whether catalogue growth is deliberate or ad hoc, and whether a formal approval step is worth adding",
+      "pii": false,
+      "properties": {
+        "product_id": { "type": "integer", "required": true },
+        "product_category": { "type": "string", "required": true },
+        "country": { "type": "string", "enum": ["CO", "US"], "nullable": false, "required": true, "description": "Ingredient.country — the product's own sourcing market, NOT a location's country. Do not reuse for currency derivation." }
+      }
+    },
+    {
+      "event_type": "user_login_succeeded",
+      "category": "authentication",
+      "mandatory": false,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "stream",
+      "source": "services/api/routes/auth.py:40-49 (POST /auth/login, success)",
+      "hypothesis": "We need to know login volume/patterns over time",
+      "decision": "Feeds the auth_failure_rate metric in the Report project",
+      "pii": false,
+      "properties": {}
+    },
+    {
+      "event_type": "user_login_failed",
+      "category": "authentication",
+      "mandatory": false,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "stream",
+      "source": "services/api/routes/auth.py:43-46 (POST /auth/login, 401)",
+      "hypothesis": "We need to know how often auth fails and why",
+      "decision": "Spot brute-force attempts or login-UX friction; feeds auth_failure_rate",
+      "pii": false,
+      "properties": {
+        "failure_reason": { "type": "string", "enum": ["invalid_credentials", "session_expired", "network_error"], "required": true, "description": "Never the email or password value entered" }
+      }
+    },
+    {
+      "event_type": "password_reset_requested",
+      "category": "authentication",
+      "mandatory": false,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "services/api/routes/auth.py:69-79 (POST /auth/forgot-password)",
+      "hypothesis": "We need to know how often users need password recovery",
+      "decision": "A spike signals a login/memorability UX problem",
+      "pii": false,
+      "properties": {}
+    },
+    {
+      "event_type": "password_changed",
+      "category": "authentication",
+      "mandatory": false,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "services/api/routes/auth.py:92-102 (POST /auth/change-password, success)",
+      "hypothesis": "Baseline password hygiene visibility",
+      "decision": "Informational, low priority",
+      "pii": false,
+      "properties": {}
+    },
+    {
+      "event_type": "frontend_error_occurred",
+      "category": "errors",
+      "mandatory": false,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "stream",
+      "source": "window.onerror / unhandledrejection in uis/backoffice",
+      "hypothesis": "We need to know how often and where uncaught errors happen",
+      "decision": "Prioritise bug triage by frequency and location",
+      "pii": false,
+      "properties": {
+        "error_message": { "type": "string", "required": true, "description": "Truncated and sanitised — never a raw stack trace that could contain user input" },
+        "page_path": { "type": "string", "required": true }
+      }
+    },
+    {
+      "event_type": "api_latency_recorded",
+      "category": "performance",
+      "mandatory": false,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "captured client-side after any backend call completes",
+      "hypothesis": "We need to know which endpoints are slow, and whether that changes by time or location",
+      "decision": "Prioritise performance work",
+      "pii": false,
+      "properties": {
+        "endpoint": { "type": "string", "required": true },
+        "duration_ms": { "type": "number", "required": true },
+        "status_code": { "type": "integer", "required": true }
+      }
+    },
+    {
+      "event_type": "section_visited",
+      "category": "navigation",
+      "mandatory": false,
+      "status": "ready",
+      "schemaVersion": 1,
+      "delivery": "batch",
+      "source": "uis/backoffice route change",
+      "hypothesis": "We need to know which sections operators actually use",
+      "decision": "Invest UX effort where it matters; deprioritise unused features",
+      "pii": false,
+      "properties": {
+        "route": { "type": "string", "required": true }
+      }
+    }
+  ]
+}
