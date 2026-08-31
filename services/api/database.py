@@ -67,7 +67,8 @@ engine = create_engine(DATABASE_URL, echo=False) if DATABASE_URL else None
 
 
 def init_inventory_db() -> None:
-    """Create the inventory tables in Supabase if they don't exist yet.
+    """Create the inventory and telemetry tables in Supabase if they
+    don't exist yet.
 
     Called once on startup, from main.py's lifespan. Deliberately does
     NOT raise when DATABASE_URL is unset -- it just skips itself. Two
@@ -77,18 +78,26 @@ def init_inventory_db() -> None:
     sets DATABASE_URL, so raising here would break the entire existing
     test suite, not just inventory tests.
 
+    Despite the name (kept from the inventory milestone rather than
+    renamed mid-project), this also registers telemetry_models'
+    TelemetryEventRecord table -- same engine, same metadata, same
+    create-if-missing behavior. create_all() only creates tables that
+    don't exist yet; it never alters an existing one, which is exactly
+    why this function is safe to keep calling on every startup.
+
     get_db() below is where a *missing* connection should actually
     fail loudly -- that only happens if someone hits a real /inventory
-    endpoint without DATABASE_URL configured.
+    or /telemetry endpoint without DATABASE_URL configured.
     """
     if engine is None:
-        print("DATABASE_URL not set -- skipping inventory table setup.")
+        print("DATABASE_URL not set -- skipping inventory/telemetry table setup.")
         return
 
     # Imported here, not at the top of the file, so this module can
     # still be imported by code that only needs TinyDB, without also
-    # requiring inventory_models.py's SQLModel table classes to exist.
+    # requiring these modules' SQLModel table classes to exist.
     import inventory_models  # noqa: F401  (import registers the tables on SQLModel.metadata)
+    import telemetry_models  # noqa: F401  (same, for telemetry_events)
 
     SQLModel.metadata.create_all(engine)
 
