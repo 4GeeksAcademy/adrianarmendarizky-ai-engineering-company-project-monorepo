@@ -8,6 +8,11 @@ Requires `NEXT_PUBLIC_API_URL` in `.env.local`, pointing at `services/api`
 (defaults to `http://localhost:8000` if unset, so this is optional for
 local dev against a default-port backend).
 
+Also reads `NEXT_PUBLIC_TELEMETRY_ENDPOINT`, pointing at the telemetry
+stub in `services/api` (defaults to `http://localhost:8000/telemetry/events`
+if unset — optional for local dev against a default-port backend, same
+as above). See `lib/telemetry.ts` and `docs/telemetry/telemetry-plan.md`.
+
 | Route | Access |
 |---|---|
 | `/login`, `/register`, `/forgot-password`, `/reset-password` | Public |
