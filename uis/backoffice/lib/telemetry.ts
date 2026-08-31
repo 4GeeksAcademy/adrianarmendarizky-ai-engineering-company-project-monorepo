@@ -118,9 +118,9 @@ function flushWithBeacon(): void {
   const payload = JSON.stringify({ events: batch });
 
   const sent = navigator.sendBeacon?.(
-    TELEMETRY_ENDPOINT,
-    new Blob([payload], { type: "application/json" })
-  );
+  TELEMETRY_ENDPOINT,
+  new Blob([payload], { type: "text/plain" })
+);
   if (!sent) {
     // sendBeacon can refuse (payload too large, browser policy) —
     // fall back to a best-effort fire-and-forget fetch with

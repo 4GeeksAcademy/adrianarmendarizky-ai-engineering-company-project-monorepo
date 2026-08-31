@@ -22,9 +22,10 @@ way, means Phase 3 is a swap of what happens to a valid event, not a
 rewrite of how events get parsed.
 """
 
+import json
 import os
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import ValidationError
 
 from telemetry_schemas import TelemetryEvent
@@ -38,8 +39,24 @@ TELEMETRY_ENDPOINT = os.getenv("TELEMETRY_ENDPOINT")
 
 
 @router.post("/events")
-def receive_events(body: dict):
-    raw_events = body.get("events", [])
+async def receive_events(request: Request):
+    # Reads the raw body directly instead of declaring a `dict`
+    # parameter -- FastAPI gates that kind of parameter on the
+    # Content-Type header actually being application/json. sendBeacon()
+    # can't reliably send that header cross-origin (application/json
+    # isn't CORS-safelisted, and sendBeacon doesn't handle a required
+    # preflight the way fetch does -- see lib/telemetry.ts's
+    # flushWithBeacon), so it sends the same JSON body labeled
+    # text/plain instead. This endpoint has to accept that regardless
+    # of the declared Content-Type, or the one delivery path meant to
+    # survive a closing tab would be the one path that never works.
+    raw_body = await request.body()
+    try:
+        parsed = json.loads(raw_body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return {"received": 0}
+
+    raw_events = parsed.get("events", []) if isinstance(parsed, dict) else []
     received = len(raw_events)
     event_types: list[str] = []
 
