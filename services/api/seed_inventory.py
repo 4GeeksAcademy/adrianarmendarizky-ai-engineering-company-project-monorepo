@@ -49,7 +49,11 @@ def seed_inventory() -> None:
             return
 
         ingredients = [
-            Ingredient(name="Beef brisket", sku="BRS-BEEF-001", unit="kg", category="meat", country="CO"),
+            # minimum_stock set on this one only, so stock_threshold_triggered
+            # (telemetry unit) has something real to fire against in a demo --
+            # every other ingredient is left at None, matching production
+            # reality (nothing has a configured minimum yet).
+            Ingredient(name="Beef brisket", sku="BRS-BEEF-001", unit="kg", category="meat", country="CO", minimum_stock=20),
             Ingredient(name="Pork ribs", sku="BRS-PORK-001", unit="kg", category="meat", country="US"),
             Ingredient(name="Chimichurri sauce", sku="BRS-SAUCE-001", unit="litre", category="sauce", country="CO"),
             Ingredient(name="House BBQ sauce", sku="BRS-SAUCE-002", unit="litre", category="sauce", country="US"),
@@ -63,9 +67,13 @@ def seed_inventory() -> None:
         by_sku = {i.sku: i for i in ingredients}
 
         # Minimum 4 entries -- 2 for beef brisket, 1 each for two others.
+        # unit_cost is set on both beef brisket entries (same supplier) so
+        # there's a real historical_avg_cost (~15.50) to compare a future
+        # inbound order against -- ingredient_price_variance_detected
+        # (telemetry unit) needs prior cost data to have anything to detect.
         entries = [
-            IngredientEntry(ingredient_id=by_sku["BRS-BEEF-001"].id, quantity=50, supplier_name="Carnes del Valle S.A.", location_id=1, user_uuid=seed_user_uuid),
-            IngredientEntry(ingredient_id=by_sku["BRS-BEEF-001"].id, quantity=30, supplier_name="Carnes del Valle S.A.", location_id=1, user_uuid=seed_user_uuid),
+            IngredientEntry(ingredient_id=by_sku["BRS-BEEF-001"].id, quantity=50, supplier_name="Carnes del Valle S.A.", location_id=1, user_uuid=seed_user_uuid, unit_cost=15.75),
+            IngredientEntry(ingredient_id=by_sku["BRS-BEEF-001"].id, quantity=30, supplier_name="Carnes del Valle S.A.", location_id=1, user_uuid=seed_user_uuid, unit_cost=15.25),
             IngredientEntry(ingredient_id=by_sku["BRS-PORK-001"].id, quantity=40, supplier_name="MiamiMeat Co.", location_id=8, user_uuid=seed_user_uuid),
             IngredientEntry(ingredient_id=by_sku["BRS-SAUCE-001"].id, quantity=20, supplier_name="Salsas Artesanales Ltda.", location_id=1, user_uuid=seed_user_uuid),
         ]

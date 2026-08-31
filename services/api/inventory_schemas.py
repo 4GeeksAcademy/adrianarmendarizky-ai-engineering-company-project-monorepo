@@ -21,6 +21,7 @@ class IngredientCreate(BaseModel):
     unit: str
     category: str
     country: str
+    minimum_stock: Optional[float] = None
 
 
 class IngredientRead(BaseModel):
@@ -31,6 +32,7 @@ class IngredientRead(BaseModel):
     category: str
     country: str
     current_stock: float  # computed by the router -- never trust a client-sent value
+    minimum_stock: Optional[float] = None
 
 
 class IngredientEntryCreate(BaseModel):
@@ -38,6 +40,7 @@ class IngredientEntryCreate(BaseModel):
     quantity: float
     supplier_name: str
     location_id: int
+    unit_cost: Optional[float] = None
 
 
 class IngredientEntryRead(BaseModel):
@@ -48,6 +51,17 @@ class IngredientEntryRead(BaseModel):
     location_id: int
     created_at: datetime
     user_uuid: str
+    unit_cost: Optional[float] = None
+    # historical_avg_cost: computed by the router from prior entries for
+    # this ingredient+supplier (never including the row just created).
+    # None when there's no prior cost data to compare against. Telemetry
+    # only -- not persisted, not a column on IngredientEntry.
+    historical_avg_cost: Optional[float] = None
+    # Denormalized from the parent Ingredient purely so the frontend's
+    # telemetry call doesn't need a second lookup to fill in an event's
+    # product_category/unit properties.
+    product_category: str
+    unit: str
 
 
 class IngredientExitCreate(BaseModel):
@@ -58,6 +72,10 @@ class IngredientExitCreate(BaseModel):
     # that's what enforces the "reason must be consumption or waste" rule.
     reason: Literal["consumption", "waste"]
     location_id: int
+    # Same Literal enforcement idea as `reason` -- only meaningful when
+    # reason="waste", but not cross-validated against `reason` here (the
+    # frontend only shows this field once "waste" is selected).
+    waste_reason: Optional[Literal["expired", "kitchen_error", "theft_suspected"]] = None
 
 
 class IngredientExitRead(BaseModel):
@@ -68,6 +86,15 @@ class IngredientExitRead(BaseModel):
     location_id: int
     created_at: datetime
     user_uuid: str
+    waste_reason: Optional[str] = None
+    product_category: str
+    unit: str
+    # current_stock/minimum_stock: both post-write, so the frontend can
+    # decide whether to fire stock_threshold_triggered without a second
+    # request. minimum_stock is None whenever the ingredient doesn't
+    # have one configured -- see inventory_models.py.
+    current_stock: float
+    minimum_stock: Optional[float] = None
 
 
 class InventoryOrderRead(BaseModel):

@@ -45,6 +45,10 @@ function InboundOrderForm() {
   const [quantity, setQuantity] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [locationId, setLocationId] = useState("1");
+  // Optional -- omitting it just means no ingredient_price_variance_detected
+  // telemetry check happens for this order (see lib/inventory.ts). Not a
+  // required business field, so left out of validation below.
+  const [unitCost, setUnitCost] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -92,10 +96,12 @@ function InboundOrderForm() {
         quantity: parsedQuantity,
         supplier_name: supplierName.trim(),
         location_id: Number(locationId),
+        unit_cost: unitCost ? Number(unitCost) : undefined,
       });
       setConfirmation("Delivery logged.");
       setQuantity("");
       setSupplierName("");
+      setUnitCost("");
     } catch (err) {
       // Surfaces the API's own message on a 400/500 -- never a silent
       // failure, per the brief.
@@ -188,6 +194,25 @@ function InboundOrderForm() {
               onChange={(e) => setSupplierName(e.target.value)}
               className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
             />
+          </label>
+
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-stone-700">
+              Unit cost <span className="font-normal text-stone-400">(optional)</span>
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={unitCost}
+              onChange={(e) => setUnitCost(e.target.value)}
+              placeholder="e.g. 15.75"
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            />
+            <span className="mt-1 block text-xs text-stone-400">
+              Used to flag unusually large price swings vs. past orders from
+              the same supplier.
+            </span>
           </label>
 
           <label className="block text-sm">

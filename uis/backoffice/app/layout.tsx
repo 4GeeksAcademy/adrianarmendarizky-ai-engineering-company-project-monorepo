@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import LogoutButton from "@/components/LogoutButton";
+import TelemetryBoot from "@/components/TelemetryBoot";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function BackofficeLayout({
   return (
     <html lang="en">
       <body className="bg-stone-100 text-stone-900 antialiased">
+        <TelemetryBoot />
         {/* Internal app shell — distinct from the public website */}
         <div className="flex min-h-screen flex-col">
           <header className="bg-stone-900 text-white px-6 py-3 flex items-center gap-3 shadow">

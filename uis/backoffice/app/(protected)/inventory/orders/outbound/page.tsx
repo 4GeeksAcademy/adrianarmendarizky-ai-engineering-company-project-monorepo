@@ -52,6 +52,12 @@ function OutboundOrderForm() {
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState<"consumption" | "waste">("consumption");
   const [locationId, setLocationId] = useState("1");
+  // Only meaningful (and only shown) when reason is "waste" -- feeds
+  // stock_waste_registered's waste_reason property. Left unset for
+  // consumption, matching the backend field being fully optional.
+  const [wasteReason, setWasteReason] = useState<
+    "expired" | "kitchen_error" | "theft_suspected"
+  >("expired");
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -111,6 +117,7 @@ function OutboundOrderForm() {
         quantity: parsedQuantity,
         reason,
         location_id: Number(locationId),
+        waste_reason: reason === "waste" ? wasteReason : undefined,
       });
       setConfirmation("Logged.");
       setQuantity("");
@@ -246,6 +253,27 @@ function OutboundOrderForm() {
               <option value="waste">Waste</option>
             </select>
           </label>
+
+          {reason === "waste" && (
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-stone-700">
+                Waste reason
+              </span>
+              <select
+                value={wasteReason}
+                onChange={(e) =>
+                  setWasteReason(
+                    e.target.value as "expired" | "kitchen_error" | "theft_suspected"
+                  )
+                }
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm bg-white"
+              >
+                <option value="expired">Expired</option>
+                <option value="kitchen_error">Kitchen error</option>
+                <option value="theft_suspected">Theft suspected</option>
+              </select>
+            </label>
+          )}
 
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-stone-700">

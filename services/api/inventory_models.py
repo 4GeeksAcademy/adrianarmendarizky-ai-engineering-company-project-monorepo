@@ -32,6 +32,13 @@ class Ingredient(SQLModel, table=True):
     # current_stock is intentionally NOT a column here. Per the business
     # rule in CONTEXT.md, it's always calculated from IngredientEntry /
     # IngredientExit rows -- never stored, never directly editable.
+    # minimum_stock: added for the telemetry unit's stock_threshold_triggered
+    # mandatory event (docs/telemetry/telemetry-plan.md). Optional with a
+    # None default on purpose -- seed_inventory.py's existing Ingredient(...)
+    # calls don't set it, and a required field here would break app startup.
+    # No ingredient has one set yet except where seed_inventory.py opts in
+    # for demo purposes.
+    minimum_stock: Optional[float] = None
 
 
 class IngredientEntry(SQLModel, table=True):
@@ -44,6 +51,11 @@ class IngredientEntry(SQLModel, table=True):
     location_id: int  # 1-14 -- not a FK, location data lives elsewhere
     created_at: datetime = Field(default_factory=datetime.utcnow)
     user_uuid: str  # references a TinyDB user's id -- no real FK possible across two databases
+    # unit_cost: added for ingredient_price_variance_detected (telemetry
+    # unit). Optional/None default for the same reason as minimum_stock
+    # above -- existing seed rows and any future caller that omits it
+    # must keep working.
+    unit_cost: Optional[float] = None
 
 
 class IngredientExit(SQLModel, table=True):
@@ -56,3 +68,8 @@ class IngredientExit(SQLModel, table=True):
     location_id: int
     created_at: datetime = Field(default_factory=datetime.utcnow)
     user_uuid: str
+    # waste_reason: sub-classification for stock_waste_registered, only
+    # meaningful when reason="waste". Optional/None -- enforced to the
+    # CONTEXT-specified enum in inventory_schemas.py, not here, matching
+    # how `reason` itself is already handled.
+    waste_reason: Optional[str] = None

@@ -107,8 +107,23 @@ def create_entry(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    if not db.get(Ingredient, payload.ingredient_id):
+    ingredient = db.get(Ingredient, payload.ingredient_id)
+    if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
+
+    # Historical average is computed from PRIOR entries only -- query
+    # before inserting the new row, so the new entry never averages
+    # against itself. Scoped to the same ingredient + supplier, per
+    # CONTEXT-brasaland.md ("historical value for that product/supplier").
+    # None when there's no prior cost data yet (a brand-new pairing, or
+    # every prior entry omitted unit_cost).
+    historical_avg_cost = db.exec(
+        select(func.avg(IngredientEntry.unit_cost)).where(
+            IngredientEntry.ingredient_id == payload.ingredient_id,
+            IngredientEntry.supplier_name == payload.supplier_name,
+            IngredientEntry.unit_cost.is_not(None),
+        )
+    ).one()
 
     entry = IngredientEntry(**payload.dict(), user_uuid=str(current_user.id))
     db.add(entry)
@@ -118,7 +133,12 @@ def create_entry(
     # `entry` itself -- response_model=IngredientEntryRead would validate
     # and serialize a raw SQLModel object correctly either way, but the
     # brief is specific that no endpoint should hand back a raw ORM object.
-    return IngredientEntryRead(**entry.dict())
+    return IngredientEntryRead(
+        **entry.dict(),
+        historical_avg_cost=historical_avg_cost,
+        product_category=ingredient.category,
+        unit=ingredient.unit,
+    )
 
 
 @router.post("/orders/outbound", response_model=IngredientExitRead)
@@ -147,8 +167,16 @@ def create_exit(
     db.commit()
     db.refresh(exit_)
     # Same reasoning as create_entry above -- explicit schema, not the raw
-    # ORM object.
-    return IngredientExitRead(**exit_.dict())
+    # ORM object. current_stock is recomputed post-write (available - this
+    # exit) so the frontend can compare against minimum_stock and decide
+    # whether to fire stock_threshold_triggered without a second request.
+    return IngredientExitRead(
+        **exit_.dict(),
+        product_category=ingredient.category,
+        unit=ingredient.unit,
+        current_stock=available - payload.quantity,
+        minimum_stock=ingredient.minimum_stock,
+    )
 
 
 @router.get("/orders", response_model=list[InventoryOrderRead])
