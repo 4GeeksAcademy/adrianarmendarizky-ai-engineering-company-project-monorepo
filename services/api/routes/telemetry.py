@@ -150,15 +150,26 @@ def get_report(
     end_date: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    end = _parse_query_datetime(end_date) if end_date else datetime.now(timezone.utc)
-    start = _parse_query_datetime(start_date) if start_date else end - timedelta(days=7)
-
-    cache_key = (start.isoformat(), end.isoformat())
+    # Cache key is the RAW params as received (including None, None
+    # for "no params passed") -- not the resolved datetimes below.
+    # When no dates are given, `end` resolves to datetime.now(), which
+    # is a different value on every single call down to the
+    # microsecond. Keying the cache off that would mean two requests a
+    # few seconds apart never share a cache entry -- the cache would
+    # silently never hit for the single most common case (asking for
+    # "the last 7 days" with no explicit dates). Keying off what was
+    # actually requested means "no params" always hits the same entry,
+    # and the cache correctly serves "the last 7 days as of the last
+    # refresh" for up to REPORT_CACHE_TTL_SECONDS.
+    cache_key = (start_date, end_date)
     cached = _report_cache.get(cache_key)
     if cached is not None:
         cached_result, cached_at = cached
         if time.monotonic() - cached_at < REPORT_CACHE_TTL_SECONDS:
             return cached_result
+
+    end = _parse_query_datetime(end_date) if end_date else datetime.now(timezone.utc)
+    start = _parse_query_datetime(start_date) if start_date else end - timedelta(days=7)
 
     # Every metric function gets the SAME resolved (start, end) -- they
     # never apply their own default window. Resolving it once, here, is
