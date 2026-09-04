@@ -388,3 +388,36 @@ endpoint; that wiring is future work, not part of this milestone's scope.
 3. **`prefect` isn't in `services/api/pyproject.toml` yet** — will need adding when
    implementation starts; not required for this design-only phase. **Status: done** —
    `prefect>=3` added via `uv add`.
+
+---
+
+## Implementation notes (Part 3)
+
+**Subflow refactor.** The main flow no longer contains any ETL logic — it coordinates four
+subflows: `extract-cost-and-waste-events`, `transform-weekly-location-performance`,
+`flag-unmatched-locations` (optional, invoked with `return_state=True`), and
+`load-weekly-location-performance`. The transformation stage, previously one task computing
+all five KPIs together, is now five small tasks — `compute-purchase-cost-per-location`,
+`compute-waste-cost-per-location`, `compute-waste-ratio`, `compute-stockout-frequency`,
+`compute-price-alert-frequency` — plus `assemble-weekly-location-performance-rows` to join
+them into destination-table rows. Each KPI task is a pure function (no database access),
+which is what makes them independently unit-testable — see `tests/pipelines/test_pipeline.py`.
+
+**Optional enhancement picked up: the concurrency guard from Cross-cutting §1.** Part 1's
+design doc originally proposed a Prefect concurrency-limit tag to stop the weekly schedule
+and a manual trigger from racing each other on the same `week_start`. That's implemented now,
+but not with a Prefect-native concurrency limit — this pipeline runs against Prefect's own
+ephemeral local server (no persistent Prefect Cloud/Server available in this environment), so
+a registered concurrency limit wouldn't reliably persist between runs. Instead,
+`weekly_location_performance_flow` checks `reporting.pipeline_runs` itself for an
+already-`Running` row for the target week before starting a new one, and returns a
+`{"skipped": true, ...}` result instead of starting a second run if one is found. Same
+protective goal as the original proposal, no new infrastructure dependency. Verified by
+seeding a fake `Running` row and confirming a second trigger for that week is skipped rather
+than racing it, rather than merely reasoned about.
+
+**Dashboard.** `uis/backoffice/app/(protected)/reporting/page.tsx` — fetches
+`GET /reporting/weekly-location-performance` and renders all five KPIs from CONTEXT-brasaland.md
+section 2 in one table, labeled with the same names used there, plus the week period and a
+per-currency summary (COP and USD totals are never combined, matching section 7's business
+constraint). Nav link added in `uis/backoffice/app/layout.tsx`.
