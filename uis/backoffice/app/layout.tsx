@@ -33,6 +33,9 @@ export default function BackofficeLayout({
               <Link href="/inventory/products" className="hover:text-white">
                 Inventory
               </Link>
+              <Link href="/reporting" className="hover:text-white">
+                Reporting
+              </Link>
               <Link href="/account/profile" className="hover:text-white">
                 Account
               </Link>
