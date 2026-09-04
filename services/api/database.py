@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine
 from tinydb import TinyDB
 
@@ -80,17 +81,18 @@ def init_inventory_db() -> None:
 
     Despite the name (kept from the inventory milestone rather than
     renamed mid-project), this also registers telemetry_models'
-    TelemetryEventRecord table -- same engine, same metadata, same
+    TelemetryEventRecord table, and reporting_models' two tables for the
+    business performance pipeline -- same engine, same metadata, same
     create-if-missing behavior. create_all() only creates tables that
     don't exist yet; it never alters an existing one, which is exactly
     why this function is safe to keep calling on every startup.
 
     get_db() below is where a *missing* connection should actually
-    fail loudly -- that only happens if someone hits a real /inventory
-    or /telemetry endpoint without DATABASE_URL configured.
+    fail loudly -- that only happens if someone hits a real /inventory,
+    /telemetry, or /reporting endpoint without DATABASE_URL configured.
     """
     if engine is None:
-        print("DATABASE_URL not set -- skipping inventory/telemetry table setup.")
+        print("DATABASE_URL not set -- skipping inventory/telemetry/reporting table setup.")
         return
 
     # Imported here, not at the top of the file, so this module can
@@ -98,6 +100,14 @@ def init_inventory_db() -> None:
     # requiring these modules' SQLModel table classes to exist.
     import inventory_models  # noqa: F401  (import registers the tables on SQLModel.metadata)
     import telemetry_models  # noqa: F401  (same, for telemetry_events)
+    import reporting_models  # noqa: F401  (same, for the two `reporting` schema tables)
+
+    # reporting_models' tables are the first ones in this codebase that
+    # don't live in the default `public` schema -- create_all() only
+    # creates TABLES, never the schema they're supposed to live in, so
+    # that has to happen explicitly, once, before create_all() runs.
+    with engine.begin() as conn:
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS reporting"))
 
     SQLModel.metadata.create_all(engine)
 

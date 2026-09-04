@@ -95,6 +95,11 @@ class IngredientExitRead(BaseModel):
     # have one configured -- see inventory_models.py.
     current_stock: float
     minimum_stock: Optional[float] = None
+    # unit_cost: computed by the router from the ingredient's most recent
+    # purchase price (see routes/inventory.py's create_exit) -- never
+    # persisted on IngredientExitCreate, same "telemetry only" treatment
+    # IngredientEntryRead.historical_avg_cost gets above.
+    unit_cost: Optional[float] = None
 
 
 class InventoryOrderRead(BaseModel):

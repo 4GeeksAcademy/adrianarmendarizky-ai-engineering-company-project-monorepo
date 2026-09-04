@@ -83,6 +83,7 @@ export type IngredientExit = {
   unit: string;
   current_stock: number;
   minimum_stock: number | null;
+  unit_cost: number | null;
 };
 
 // country/currency are null on every inventory event below, on
@@ -147,6 +148,11 @@ export async function createInboundOrder(
       unit: entry.unit,
       currency: LOCATION_CURRENCY_UNRESOLVED,
       supplier_name: entry.supplier_name,
+      // Was already computed server-side (used two lines below for the
+      // price-variance check) but never actually captured on this event
+      // itself -- Purchase Cost per Location in the business performance
+      // pipeline needs it. See PIPELINE_DESIGN.md, "Schema prerequisite #1".
+      unit_cost: entry.unit_cost,
     },
     requestId
   );
@@ -213,7 +219,15 @@ export async function createOutboundOrder(
   if (exit_.reason === "waste") {
     track(
       "stock_waste_registered",
-      { ...baseProperties, waste_reason: exit_.waste_reason },
+      {
+        ...baseProperties,
+        waste_reason: exit_.waste_reason,
+        // New field -- didn't exist anywhere in the waste path before.
+        // Backend fills it in from the ingredient's most recent purchase
+        // price (routes/inventory.py's create_exit); Waste Cost per
+        // Location needs it. See PIPELINE_DESIGN.md, "Schema prerequisite #1".
+        unit_cost: exit_.unit_cost,
+      },
       requestId
     );
   } else {
