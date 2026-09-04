@@ -335,12 +335,56 @@ established in `data/pipelines/README.md`.
 
 ---
 
+## Implementation notes (Part 2)
+
+**Layout changed from what's sketched above.** Part 2's own instructions require the main
+entry point to be exactly `data/pipelines/pipeline.py`, with `data/raw/`, `data/process/`,
+and `data/eval/` as the supporting folders — a flatter layout than the
+`data/pipelines/weekly_location_performance/` subpackage sketched in the Endpoints table
+above. The actual implementation is one file, `data/pipelines/pipeline.py`, containing the
+flow and all four tasks; the three endpoints import directly from it
+(`from pipeline import weekly_location_performance_flow`) rather than from
+per-concern `read.py` / `runs.py` / `flow.py` modules. The stages, KPIs, tables, and
+resilience strategies designed above are unchanged — only the file split is different from
+what this document originally sketched, because Part 2's instructions arrived with a more
+specific structure than Part 1 had to work from.
+
+**Run command:**
+
+```bash
+cd services/api && uv run python ../../data/pipelines/pipeline.py
+# or a specific past week, e.g. for the late-events recompute case (Idempotency §3):
+cd services/api && uv run python ../../data/pipelines/pipeline.py --week-start 2026-08-24
+```
+
+Run from within `services/api/` so it uses that project's `uv`-managed virtual environment
+(where `prefect` is installed) — `data/pipelines/` has no `pyproject.toml` of its own. The
+same reasoning `services/Dockerfile` already documents for reaching `scripts/` and
+`packages/shared/` applies here: `pipeline.py` puts `services/api` on `sys.path` itself, so
+this works whether it's invoked directly or imported by `routes/reporting.py`'s manual
+trigger endpoint.
+
+**Intended schedule:** weekly, matching Mariana's Monday-morning reporting cadence
+(CONTEXT-brasaland.md §1) — the cron trigger would run early Monday UTC, computing the week
+that just closed. A production deployment would register `weekly_location_performance_flow`
+with a Prefect deployment/schedule instead of relying solely on the CLI or the manual-trigger
+endpoint; that wiring is future work, not part of this milestone's scope.
+
+---
+
 ## Open items before implementation begins
 
 1. **Location registry data** — need the real `location_id → country` list from Felipe's
-   team. Nothing in the codebase should guess this.
+   team. Nothing in the codebase should guess this. **Status:** still open. The Part 2
+   implementation uses an explicit placeholder (`LOCATION_REGISTRY` in `pipeline.py`,
+   mapping only the two location_ids that appear in `seed_inventory.py`'s data) and flags
+   any other `location_id` it encounters to `data/eval/` rather than guessing — but the
+   other 12 real locations still need to come from the business before this is complete.
 2. **Two schema additions** — `unit_cost` on `inbound_order_created`'s captured
    properties (pass-through of data already computed) and a new `unit_cost` field on
-   `IngredientExit` for `stock_waste_registered` (genuinely new data).
+   `IngredientExit` for `stock_waste_registered` (genuinely new data). **Status: done** —
+   both added in Part 2 (`inventory_models.py`, `inventory_schemas.py`,
+   `routes/inventory.py`, `lib/inventory.ts`, `docs/telemetry/event-schemas.json`).
 3. **`prefect` isn't in `services/api/pyproject.toml` yet** — will need adding when
-   implementation starts; not required for this design-only phase.
+   implementation starts; not required for this design-only phase. **Status: done** —
+   `prefect>=3` added via `uv add`.

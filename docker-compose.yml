@@ -19,6 +19,7 @@ services:
       - /workspace/services/api/.venv
       - ./scripts:/workspace/scripts
       - ./packages/shared:/workspace/packages/shared
+      - ./data/pipelines:/workspace/data/pipelines
     networks:
       - brasaland-network
 

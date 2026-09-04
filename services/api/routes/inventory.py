@@ -162,7 +162,26 @@ def create_exit(
             ),
         )
 
-    exit_ = IngredientExit(**payload.dict(), user_uuid=str(current_user.id))
+    # unit_cost for a waste report isn't supplied by the caller -- waste
+    # has no purchase price of its own. Same "look at prior entries"
+    # approach as create_entry's historical_avg_cost above: most recent
+    # unit_cost from this ingredient's entries, queried BEFORE the write
+    # below (though this exit never touches IngredientEntry anyway, so
+    # order doesn't matter here the way it does there). None when no
+    # entry for this ingredient ever recorded a cost.
+    most_recent_unit_cost = db.exec(
+        select(IngredientEntry.unit_cost)
+        .where(
+            IngredientEntry.ingredient_id == payload.ingredient_id,
+            IngredientEntry.unit_cost.is_not(None),
+        )
+        .order_by(IngredientEntry.created_at.desc())
+        .limit(1)
+    ).first()
+
+    exit_ = IngredientExit(
+        **payload.dict(), user_uuid=str(current_user.id), unit_cost=most_recent_unit_cost
+    )
     db.add(exit_)
     db.commit()
     db.refresh(exit_)

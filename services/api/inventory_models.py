@@ -73,3 +73,23 @@ class IngredientExit(SQLModel, table=True):
     # CONTEXT-specified enum in inventory_schemas.py, not here, matching
     # how `reason` itself is already handled.
     waste_reason: Optional[str] = None
+    # unit_cost: added for the business performance pipeline's Waste Cost
+    # per Location KPI (data/pipelines/PIPELINE_DESIGN.md, "Schema
+    # prerequisite #1"). Unlike IngredientEntry.unit_cost above, this is
+    # never supplied by the caller -- a waste report has no purchase price
+    # of its own. routes/inventory.py's create_exit fills it in from the
+    # ingredient's most recent IngredientEntry.unit_cost, the same
+    # "look at prior entries" pattern already used there for
+    # historical_avg_cost. Optional/None for the same reason as every
+    # other field added this way: existing seed rows and any ingredient
+    # with no cost history yet must keep working.
+    #
+    # NOTE: if you're setting up a fresh environment where `ingredientexit`
+    # already exists from an earlier milestone, create_all() will NOT add
+    # this column to it -- create_all() only creates missing tables, never
+    # alters existing ones. Run this manually in Supabase's SQL Editor:
+    #   ALTER TABLE ingredientexit ADD COLUMN unit_cost DOUBLE PRECISION;
+    # Skipping this shows up as "Failed to fetch" on the frontend when
+    # logging waste -- the real error (UndefinedColumn) is in the API
+    # container logs, not the browser.
+    unit_cost: Optional[float] = None
