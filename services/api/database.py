@@ -101,6 +101,7 @@ def init_inventory_db() -> None:
     import inventory_models  # noqa: F401  (import registers the tables on SQLModel.metadata)
     import telemetry_models  # noqa: F401  (same, for telemetry_events)
     import reporting_models  # noqa: F401  (same, for the two `reporting` schema tables)
+    import job_runs_models  # noqa: F401  (same, for job_runs)
 
     # reporting_models' tables are the first ones in this codebase that
     # don't live in the default `public` schema -- create_all() only
