@@ -18,27 +18,21 @@ follows for telemetry_analysis.py ("don't calculate anything inside the
 endpoint").
 """
 
-import sys
 from datetime import date
-from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
 from database import get_db
 from reporting_models import PipelineRun, WeeklyLocationPerformance
+from tasks import run_weekly_performance_report
 
-# data/pipelines/ isn't services/api's own package, so it needs the same
-# hand-rolled sys.path treatment already used elsewhere in this repo to
-# reach a sibling directory (see scripts/analyze.py,
-# app/incidents/controller.py, and data/pipelines/pipeline.py's own
-# version of this same pattern in reverse).
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT / "data" / "pipelines"))
-
-from pipeline import weekly_location_performance_flow  # noqa: E402
-
+# DEV-55: pipeline.py (data/pipelines/) is no longer imported here --
+# POST /pipeline-runs below now enqueues tasks.run_weekly_performance_report
+# instead of calling the flow directly, and that task is the one that
+# needs data/pipelines/ on sys.path (see celery_app.py, which sets that
+# up once for every task, not per-route).
 router = APIRouter(prefix="/reporting", tags=["reporting"])
 
 
@@ -111,18 +105,23 @@ def get_latest_pipeline_run(db: Session = Depends(get_db)):
     }
 
 
-@router.post("/pipeline-runs")
+@router.post("/pipeline-runs", status_code=status.HTTP_202_ACCEPTED)
 def trigger_pipeline_run(week_start: Optional[str] = None):
-    """Manual trigger -- runs weekly_location_performance_flow
-    synchronously and returns its result. Imports and calls the flow
-    directly rather than duplicating any of its logic here, per the
-    ticket's "no ETL logic belongs in services/" rule.
+    """Manual trigger (DEV-55) -- enqueues weekly_location_performance_flow
+    as a background Celery task and returns immediately with a task_id,
+    instead of running the flow in-request.
 
-    Runs in-request (blocking) rather than handed off to a background
-    worker -- reasonable at this scale (14 rows, a handful of seconds),
-    and keeps this milestone's scope to what PIPELINE_DESIGN.md actually
-    designed. A queue would be the first thing to add if that stops
-    being true.
+    Picked as DEV-55's conversion candidate because it was already the
+    one blocking, synchronous operation in this API -- this endpoint's
+    own previous docstring said a queue would be "the first thing to
+    add" once running in-request stopped being fast enough. See
+    GET /tasks/{task_id} (routes/tasks.py) to check status/result, and
+    tasks.py for the task itself (retries, backoff, and the DLQ).
+
+    week_start is passed through as a plain ISO string (or left out) --
+    not the flow's own `date` object -- since the message that goes
+    into Redis has to be JSON-serializable and small (see tasks.py's
+    docstring on keeping messages lightweight).
     """
-    target_week = date.fromisoformat(week_start) if week_start else None
-    return weekly_location_performance_flow(week_start=target_week, triggered_by="manual")
+    task = run_weekly_performance_report.delay(week_start=week_start, triggered_by="async")
+    return {"task_id": task.id}

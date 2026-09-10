@@ -12,7 +12,8 @@ docker compose up --build
 ```
 
 Website: `http://localhost:3000` · Backoffice: `http://localhost:3001` ·
-API docs: `http://localhost:8000/docs`
+API docs: `http://localhost:8000/docs` · Flower (task queue monitoring):
+`http://localhost:5555`
 
 ## Structure
 

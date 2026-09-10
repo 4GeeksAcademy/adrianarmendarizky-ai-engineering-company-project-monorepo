@@ -20,6 +20,66 @@ services:
       - ./scripts:/workspace/scripts
       - ./packages/shared:/workspace/packages/shared
       - ./data/pipelines:/workspace/data/pipelines
+    depends_on:
+      - redis
+    networks:
+      - brasaland-network
+
+  # DEV-55: broker + result backend for the Celery task queue. The API
+  # (producer) and worker (consumer) both connect here over REDIS_URL --
+  # never to each other directly.
+  redis:
+    image: redis:7-alpine
+    container_name: brasaland-redis
+    # noeviction: if the queue ever filled memory, Redis's default
+    # behavior is to silently drop keys to make room -- for a task
+    # queue that means silently losing queued/result data. Refusing new
+    # writes with an OOM error instead is the safer failure mode here.
+    command: ["redis-server", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "6379:6379"
+    networks:
+      - brasaland-network
+
+  # DEV-55: the Celery worker. Same image as the API (it needs the same
+  # code -- tasks.py, celery_app.py, plus data/pipelines for the task
+  # that calls into pipeline.py) but a different command, and its own
+  # container -- this is the "separate process, not inside the FastAPI
+  # process" requirement. Stopping the api/ui containers never touches
+  # this one.
+  worker:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    container_name: brasaland-worker
+    command: ["uv", "run", "celery", "-A", "celery_app", "worker", "--loglevel=info"]
+    env_file:
+      - .env
+    volumes:
+      - ./services/api:/workspace/services/api
+      - /workspace/services/api/.venv
+      - ./scripts:/workspace/scripts
+      - ./packages/shared:/workspace/packages/shared
+      - ./data/pipelines:/workspace/data/pipelines
+    depends_on:
+      - redis
+    networks:
+      - brasaland-network
+
+  # DEV-55: Flower, for watching the queue during development --
+  # queued/in-progress/completed/failed tasks, per task_id.
+  flower:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    container_name: brasaland-flower
+    command: ["uv", "run", "celery", "-A", "celery_app", "flower", "--port=5555"]
+    env_file:
+      - .env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
     networks:
       - brasaland-network
 

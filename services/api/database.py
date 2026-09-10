@@ -102,6 +102,7 @@ def init_inventory_db() -> None:
     import telemetry_models  # noqa: F401  (same, for telemetry_events)
     import reporting_models  # noqa: F401  (same, for the two `reporting` schema tables)
     import job_runs_models  # noqa: F401  (same, for job_runs)
+    import dlq_models  # noqa: F401  (same, for task_failures -- DEV-55's DLQ table)
 
     # reporting_models' tables are the first ones in this codebase that
     # don't live in the default `public` schema -- create_all() only

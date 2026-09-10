@@ -115,6 +115,42 @@ curl -X POST http://localhost:8000/suppliers \
 
 ---
 
+## Async task queue (Celery + Redis)
+
+`POST /reporting/pipeline-runs` used to run `weekly_location_performance_flow`
+in-request, blocking the caller until it finished. It now enqueues the
+work as a background Celery task and returns immediately — see
+`celery_app.py`, `tasks.py`, and `routes/tasks.py`.
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/reporting/pipeline-runs` | Enqueues the report; `202 Accepted` with `{"task_id": "..."}` immediately |
+| GET | `/tasks/{task_id}` | Status (`pending`/`started`/`success`/`failure`) and result of any enqueued task |
+
+**Running the worker:**
+
+- Via Docker Compose (recommended — starts alongside `redis`/`api`/`ui`):
+  `docker compose up` already includes the `worker` and `flower`
+  services (see the root `docker-compose.yml`). Stop just the worker
+  with `docker compose stop worker`; stopping it never drops
+  already-queued messages, since those live in Redis, not the worker.
+- Manually, outside Docker (useful while iterating on a task): from
+  `services/api/`, run `uv run celery -A celery_app worker --loglevel=info`.
+  `Ctrl+C` stops it.
+
+**Retries and the Dead Letter Queue:** a failing task retries up to 3
+times with exponential backoff (10s, then 20s, then 40s — never
+immediately). If every attempt fails, the failure is written to the
+`task_failures` table (`dlq_models.py`) with the `task_id`, attempt
+number, error message, and timestamp.
+
+**Monitoring:** Flower runs at `http://localhost:5555` (started by
+`docker compose up`, or manually with
+`uv run celery -A celery_app flower --port=5555`) and shows queued,
+in-progress, completed, and failed tasks.
+
+---
+
 ## Incidents
 
 Reuses the validation/metrics logic from `scripts/analyze.py` directly
