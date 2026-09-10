@@ -32,6 +32,7 @@ from routes.incidents import router as incidents_router
 from routes.profiles import router as profiles_router
 from routes.reporting import router as reporting_router
 from routes.suppliers import router as suppliers_router
+from routes.tasks import router as tasks_router
 from routes.telemetry import router as telemetry_router
 from routes.users import router as users_router
 from seed import seed_database
@@ -85,6 +86,7 @@ app.include_router(incidents_router)
 app.include_router(inventory_router)
 app.include_router(telemetry_router)
 app.include_router(reporting_router)
+app.include_router(tasks_router)
 
 
 @app.get("/")
