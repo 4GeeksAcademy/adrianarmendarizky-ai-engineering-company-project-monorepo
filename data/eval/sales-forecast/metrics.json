@@ -1,0 +1,25 @@
+{
+  "mse_usd2": 3555702788.85833,
+  "rmse_usd": 59629.7139759896,
+  "mape_pct": 5.280237886768829,
+  "psi": 7.33175633642556,
+  "gini": 0.29861111111111116,
+  "ks_score": 0.3333333333333333,
+  "auc": 0.6493055555555556,
+  "train_rows": 84,
+  "test_rows": 24,
+  "feature_importances": {
+    "lag_12": 0.8269,
+    "time_index": 0.0553,
+    "rolling_mean_12": 0.0407,
+    "rolling_mean_3": 0.0203,
+    "lag_2": 0.014,
+    "lag_1": 0.0109,
+    "lag_3": 0.0103,
+    "month_num": 0.0094,
+    "rolling_std_3": 0.0064,
+    "is_january": 0.0025,
+    "is_december": 0.0024,
+    "quarter": 0.001
+  }
+}
