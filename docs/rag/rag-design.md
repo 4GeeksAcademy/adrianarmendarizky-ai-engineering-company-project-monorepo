@@ -121,7 +121,7 @@ API response itself never shows that to the caller.
   is meant to be compared this way.
 - **Generation model is a separate model ID from embeddings**, per the
   ticket's "never reuse the generation model for embeddings": generation
-  uses the same gateway's `downtown-miami/groq/llama-3.1-8b-instant`
+  uses the same gateway's `downtown-miami/openrouter/deepseek/deepseek-v4-flash`
   (`data/pipelines/generation_client.py`), not the embeddings model.
 
 ## 4. Retrieval threshold (`min_score`)
