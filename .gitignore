@@ -7,3 +7,5 @@ workspace.tar.gz
 # strings live only here, never committed.
 .env
 !.env.example
+
+services/api/agent_checkpoints.db*

@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.2, pytest-9.1.1, pluggy-1.6.0 -- /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo
+configfile: pyproject.toml
+plugins: langsmith-0.14.0, cov-7.1.0, anyio-4.14.2
+collecting ... collected 4 items
+
+../../tests/pipelines/test_agent.py::test_grounded_question_routes_through_generate PASSED [ 25%]
+../../tests/pipelines/test_agent.py::test_ungrounded_question_routes_to_no_info_not_generate PASSED [ 50%]
+../../tests/pipelines/test_agent.py::test_answer_is_grounded_in_the_knowledge_base PASSED [ 75%]
+../../tests/pipelines/test_agent.py::test_trace_is_queryable_after_the_run_from_a_fresh_lookup PASSED [100%]
+
+============================== 4 passed in 11.97s ==============================
