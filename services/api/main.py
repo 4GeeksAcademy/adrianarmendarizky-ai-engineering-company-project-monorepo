@@ -30,6 +30,7 @@ from routes.inventory import router as inventory_router
 from routes.auth import router as auth_router
 from routes.incidents import router as incidents_router
 from routes.knowledge import router as knowledge_router
+from routes.agent import router as agent_router
 from routes.profiles import router as profiles_router
 from routes.reporting import router as reporting_router
 from routes.suppliers import router as suppliers_router
@@ -89,6 +90,7 @@ app.include_router(telemetry_router)
 app.include_router(reporting_router)
 app.include_router(tasks_router)
 app.include_router(knowledge_router)
+app.include_router(agent_router)
 
 
 @app.get("/")
