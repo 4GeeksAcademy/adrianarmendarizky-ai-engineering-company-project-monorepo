@@ -64,8 +64,15 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 # echo=False keeps the terminal quiet; set to True temporarily if you
 # ever need to see the raw SQL SQLModel is generating.
-engine = create_engine(DATABASE_URL, echo=False) if DATABASE_URL else None
-
+# prepare_threshold=None: Supabase's Transaction pooler hands out a
+# different physical connection per transaction, but psycopg3 caches
+# server-side prepared statements as if the connection were stable --
+# this disables that caching so it stops colliding across reconnects.
+engine = (
+    create_engine(DATABASE_URL, echo=False, connect_args={"prepare_threshold": None})
+    if DATABASE_URL
+    else None
+)
 
 def init_inventory_db() -> None:
     """Create the inventory and telemetry tables in Supabase if they

@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "question": "What day and time must the weekly supplier order be submitted?",
+    "expected_source_document": "supplier-ordering",
+    "expected_answer": "Every Monday before 10:00 a.m. local time, by the location manager."
+  },
+  {
+    "id": 2,
+    "question": "How often are beverages and packaging ordered, and how long does delivery take?",
+    "expected_source_document": "supplier-ordering",
+    "expected_answer": "Biweekly order, with 5 business-day delivery."
+  },
+  {
+    "id": 3,
+    "question": "Who has to approve an emergency supplier order over 500 USD?",
+    "expected_source_document": "supplier-ordering",
+    "expected_answer": "Lucía Fernández, the Procurement Manager."
+  },
+  {
+    "id": 4,
+    "question": "Does the Brasaland BBQ Ribs dish contain any allergens?",
+    "expected_source_document": "menu-allergens",
+    "expected_answer": "Yes -- it contains soy from the sauce and may contain trace peanuts on some production lines of the imported sauce. There is also no certified gluten-free version of the dish."
+  },
+  {
+    "id": 5,
+    "question": "Is the Tropical Salad safe for a customer with a dairy allergy?",
+    "expected_source_document": "menu-allergens",
+    "expected_answer": "No -- the Tropical Salad contains dairy (feta cheese) and also nuts (cashew)."
+  },
+  {
+    "id": 6,
+    "question": "Can a server guarantee zero cross-contamination risk for a customer with a severe allergy?",
+    "expected_source_document": "menu-allergens",
+    "expected_answer": "No -- zero cross-contamination risk is never guaranteed, and the server must say so explicitly to the customer."
+  },
+  {
+    "id": 7,
+    "question": "What level of unexplained shrinkage triggers an automatic alert to the operations supervisor?",
+    "expected_source_document": "waste-protocol",
+    "expected_answer": "Unexplained shrinkage above 3% of an ingredient's weekly inventory."
+  },
+  {
+    "id": 8,
+    "question": "At what monthly waste percentage does a location enter an improvement plan with Operations?",
+    "expected_source_document": "waste-protocol",
+    "expected_answer": "Locations exceeding 6% waste for two consecutive months enter an improvement plan."
+  },
+  {
+    "id": 9,
+    "question": "How many Brasa Points does a customer need to reach Gold tier?",
+    "expected_source_document": "loyalty-program",
+    "expected_answer": "50 or more points, which gives a 15% permanent discount and early access to the seasonal menu."
+  },
+  {
+    "id": 10,
+    "question": "Can Brasa Points be used on delivery orders?",
+    "expected_source_document": "loyalty-program",
+    "expected_answer": "Yes, as long as the order is placed through the app -- they apply the same way as in-store."
+  }
+]
