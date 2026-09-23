@@ -209,3 +209,14 @@ export async function changePassword(
   }
   track("password_changed");
 }
+
+export async function queryKnowledge(question: string): Promise<string> {
+  const res = await authFetch("/knowledge/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  if (!res.ok) throw new Error(`API returned ${res.status}`);
+  const body: { answer: string } = await res.json();
+  return body.answer;
+}
