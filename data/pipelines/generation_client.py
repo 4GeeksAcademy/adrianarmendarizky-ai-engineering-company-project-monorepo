@@ -11,8 +11,7 @@ from openai import OpenAI
 
 GENERATION_BASE_URL = os.environ.get("GENERATION_BASE_URL", "https://llm.4geeks.ai")
 GENERATION_MODEL_ID = os.environ.get(
-        "GENERATION_MODEL_ID", "downtown-miami/groq/llama-3.1-8b-instant"
-)
+    "GENERATION_MODEL_ID", "downtown-miami/openrouter/deepseek/deepseek-v4-flash")
 _client = OpenAI(
     # A placeholder here (instead of None) keeps *importing* this module
     # working before .env has a real key -- the OpenAI SDK raises
