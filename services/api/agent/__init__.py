@@ -1,3 +1,3 @@
-"""services/api/agent/ -- Part 1 of 2 (LangGraph migration): the compiled
-agent graph, its nodes, and its state schema. See graph.py's module
-docstring for the graph shape."""
+"""services/api/agent/ -- the compiled agent graph, its nodes, tools,
+and state schema. See graph.py's module docstring for the current graph
+shape (extended in Part 2 with the ticket and inventory tools)."""
