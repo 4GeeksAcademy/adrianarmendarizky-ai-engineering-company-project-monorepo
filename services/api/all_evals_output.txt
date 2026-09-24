@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.2, pytest-9.1.1, pluggy-1.6.0 -- /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo
+configfile: pyproject.toml
+plugins: langsmith-0.14.0, cov-7.1.0, anyio-4.14.2
+collecting ... collected 15 items
+
+../../tests/pipelines/test_rag.py::test_retrieve_drops_hits_below_min_score PASSED [  6%]
+../../tests/pipelines/test_rag.py::test_retrieve_returns_fewer_than_k_when_few_hits_clear_the_bar PASSED [ 13%]
+../../tests/pipelines/test_rag.py::test_retrieve_embeds_the_query_with_the_same_embed_used_at_index_time PASSED [ 20%]
+../../tests/pipelines/test_rag.py::test_generate_answer_returns_fixed_message_on_empty_context_without_calling_the_llm PASSED [ 26%]
+../../tests/pipelines/test_rag.py::test_generate_answer_returns_model_output_not_raw_chunk_text PASSED [ 33%]
+../../tests/pipelines/test_rag.py::test_query_is_retrieve_plus_generate_answer_and_nothing_else PASSED [ 40%]
+../../tests/pipelines/test_agent.py::test_grounded_question_routes_through_generate PASSED [ 46%]
+../../tests/pipelines/test_agent.py::test_ungrounded_question_gets_the_honest_fallback PASSED [ 53%]
+../../tests/pipelines/test_agent.py::test_answer_is_grounded_in_the_knowledge_base PASSED [ 60%]
+../../tests/pipelines/test_agent.py::test_trace_is_queryable_after_the_run_from_a_fresh_lookup PASSED [ 66%]
+../../tests/pipelines/test_agent_tools.py::test_ticket_question_routes_to_ticket_tool_not_rag PASSED [ 73%]
+../../tests/pipelines/test_agent_tools.py::test_policy_question_routes_to_rag_not_ticket_tool PASSED [ 80%]
+../../tests/pipelines/test_agent_tools.py::test_ticket_fallback_when_ticket_does_not_exist PASSED [ 86%]
+../../tests/pipelines/test_agent_tools.py::test_compound_question_uses_both_ticket_tool_and_rag PASSED [ 93%]
+../../tests/pipelines/test_agent_tools.py::test_inventory_question_routes_to_inventory_tool PASSED [100%]
+
+============================= 15 passed in 17.80s ==============================
