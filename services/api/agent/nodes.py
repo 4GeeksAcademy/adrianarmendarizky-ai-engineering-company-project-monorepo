@@ -21,6 +21,11 @@ just enforced one level down from where it was in Part 1.
 retrieve() and generate_answer() are still reused unchanged from
 data/pipelines/rag.py, exactly as in Part 1 -- this file only adds to
 what routes to them and what happens after.
+
+Ticket and inventory lookups no longer talk to those systems directly:
+they go through the company's MCP server as an MCP client (see
+mcp_client.py). The direct implementation was removed, so there is only
+one path.
 """
 
 import re
@@ -33,7 +38,7 @@ sys.path.insert(0, str(REPO_ROOT / "data" / "pipelines"))
 
 from rag import retrieve, generate_answer, NO_INFO_MESSAGE  # noqa: E402
 
-from . import tools
+from . import mcp_client
 from .state import AgentState
 
 # --- Question understanding (shared between routing and the tool nodes) --
@@ -111,42 +116,52 @@ def retrieve_node(state: AgentState) -> dict:
     return {"context": retrieve(state["question"])}
 
 
+_TICKET_UNAVAILABLE = (
+    "I couldn't confirm that ticket's status right now -- "
+    "the incident system isn't responding. Please try again shortly."
+)
+_INVENTORY_UNAVAILABLE = (
+    "I couldn't check inventory right now -- "
+    "the inventory system isn't responding. Please try again shortly."
+)
+
+
 def ticket_tool_node(state: AgentState) -> dict:
-    """Calls the real incident manager (tools.lookup_ticket) -- read-only,
-    real HTTP, real JWT, real timeout. Never fabricates a status: success
-    sets ticket_info, any failure sets a specific, honest ticket_error
-    instead."""
+    """Looks the ticket up through the MCP server (tool:
+    check_ticket_status) -- read-only, with the agent's own read-only
+    token. Never fabricates a status: success sets ticket_info, and every
+    failure sets a specific, honest ticket_error instead."""
     ticket_id = extract_ticket_id(state["question"])
     try:
-        result = tools.lookup_ticket(ticket_id)
-        return {"ticket_info": result.model_dump()}
-    except tools.TicketNotFoundError:
-        return {"ticket_error": f"I couldn't find a ticket with ID {ticket_id}."}
-    except tools.TicketServiceUnavailableError:
-        return {
-            "ticket_error": (
-                "I couldn't confirm that ticket's status right now -- "
-                "the incident system isn't responding. Please try again shortly."
-            )
-        }
+        ticket = mcp_client.call_tool("check_ticket_status", {"ticket_id": ticket_id})
+    except mcp_client.MCPToolError as exc:
+        if exc.code == "ticket_not_found":
+            return {"ticket_error": f"I couldn't find a ticket with ID {ticket_id}."}
+        return {"ticket_error": _TICKET_UNAVAILABLE}
+    except mcp_client.MCPUnavailableError:
+        return {"ticket_error": _TICKET_UNAVAILABLE}
+    if not isinstance(ticket, dict):
+        return {"ticket_error": _TICKET_UNAVAILABLE}
+    return {"ticket_info": ticket}
 
 
 def inventory_tool_node(state: AgentState) -> dict:
-    """Calls the real inventory manager (tools.lookup_inventory).
-    An empty match list is a legitimate result (see lookup_inventory's
-    docstring), reported honestly rather than treated as an error."""
+    """Reads the product list through the MCP server (tool:
+    query_inventory), then matches real product names against the
+    question -- the same matching as before, just over data that now
+    arrives through the MCP server. An empty match is a legitimate
+    result, reported honestly rather than treated as an error."""
     try:
-        matches = tools.lookup_inventory(state["question"])
-    except tools.InventoryServiceUnavailableError:
-        return {
-            "inventory_error": (
-                "I couldn't check inventory right now -- "
-                "the inventory system isn't responding. Please try again shortly."
-            )
-        }
+        products = mcp_client.call_tool("query_inventory", {})
+    except (mcp_client.MCPToolError, mcp_client.MCPUnavailableError):
+        return {"inventory_error": _INVENTORY_UNAVAILABLE}
+    if not isinstance(products, list):
+        return {"inventory_error": _INVENTORY_UNAVAILABLE}
+    question = state["question"].lower()
+    matches = [p for p in products if p["name"].lower() in question]
     if not matches:
         return {"inventory_error": "I couldn't find a matching product in inventory for that question."}
-    return {"inventory_matches": [m.model_dump() for m in matches]}
+    return {"inventory_matches": matches}
 
 
 def _format_ticket_answer(ticket: dict) -> str:
