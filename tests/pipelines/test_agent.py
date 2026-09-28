@@ -61,18 +61,19 @@ def test_grounded_question_routes_through_generate():
     assert "no_info" not in nodes_run
 
 
-def test_ungrounded_question_routes_to_no_info_not_generate():
+def test_ungrounded_question_gets_the_honest_fallback():
     """Eval 2 (routing): for a question nothing in the knowledge base
-    covers, retrieve must still run, but the graph must route to
-    no_info -- generate (and therefore the generation LLM) must never
-    be called, and the final answer must be the honest NO_INFO_MESSAGE,
-    not an invented one."""
+    covers, retrieve must still run, and the final answer must be the
+    honest NO_INFO_MESSAGE. In Part 2 this is enforced inside
+    generate_node itself (it never calls the generation LLM when
+    nothing was found anywhere -- see nodes.py's module docstring for
+    why the separate no_info node from Part 1 was removed once the
+    graph gained parallel tool branches), so a dedicated node name is no
+    longer what proves this -- the answer itself is."""
     result, trace = _run(UNGROUNDED_QUESTION)
     nodes_run = [step["node"] for step in trace]
 
     assert "retrieve" in nodes_run
-    assert "no_info" in nodes_run
-    assert "generate" not in nodes_run
     assert result["answer"] == NO_INFO_MESSAGE
 
 
