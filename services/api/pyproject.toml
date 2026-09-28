@@ -40,6 +40,7 @@ include = ["*.py", "routes/*.py", "routers/*.py"]
 
 [dependency-groups]
 dev = [
+    "fakeredis>=2.38.0",
     "httpx>=0.28.1",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",

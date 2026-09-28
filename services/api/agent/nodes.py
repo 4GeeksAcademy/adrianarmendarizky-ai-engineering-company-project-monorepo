@@ -107,6 +107,11 @@ def receive_question_node(state: AgentState) -> dict:
         "inventory_matches": None,
         "inventory_error": None,
         "answer": None,
+        "memory_notes": None,
+        "memory_ack": None,
+        "memory_handled": False,
+        "skip_rest": False,
+        "memory_proposal": None,
     }
 
 
@@ -198,8 +203,13 @@ def generate_node(state: AgentState) -> dict:
     elif state.get("inventory_error"):
         parts.append(state["inventory_error"])
 
-    if state.get("context"):
-        parts.append(generate_answer(state["question"], state["context"]))
+    # Saved manager notes (agent/memory_nodes.py) are added to the RAG answer.
+    # If the question matched no documents and no tool answered it, the notes
+    # alone can still answer it (e.g. "when does the Medellin meat supplier
+    # deliver?" after a manager corrected the day).
+    memory_notes = state.get("memory_notes")
+    if state.get("context") or (memory_notes and not parts):
+        parts.append(generate_answer(state["question"], state.get("context") or [], memory_notes))
 
     if not parts:
         parts.append(NO_INFO_MESSAGE)

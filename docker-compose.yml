@@ -38,9 +38,16 @@ services:
     # behavior is to silently drop keys to make room -- for a task
     # queue that means silently losing queued/result data. Refusing new
     # writes with an OOM error instead is the safer failure mode here.
-    command: ["redis-server", "--maxmemory-policy", "noeviction"]
+    #
+    # --appendonly yes + the redis-data volume (Milestone 8): Redis also holds
+    # the agent's long-term memory (database 1, keys starting "agent_memory:").
+    # Without a volume, `docker compose down` would erase everything the agent
+    # had learned. Celery's own data (database 0) is not hurt by this.
+    command: ["redis-server", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
     ports:
       - "6379:6379"
+    volumes:
+      - redis-data:/data
     networks:
       - brasaland-network
 
@@ -127,6 +134,7 @@ services:
 volumes:
   qdrant-storage:
   api-venv:
+  redis-data:
 
 networks:
   brasaland-network:
