@@ -1,0 +1,21 @@
+[project]
+name = "brasaland-incidents-inventory-mcp"
+version = "0.1.0"
+description = "OAuth-protected MCP Server exposing the Incidents Manager and Inventory Manager as tools"
+requires-python = ">=3.12"
+dependencies = [
+    "fastmcp",
+    "mcpauth>=0.2.0b1",
+    "httpx",
+    "pydantic",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "uvicorn",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+include = ["*.py"]
