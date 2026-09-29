@@ -27,6 +27,9 @@ class RfpIntakeState(TypedDict, total=False):
     # Stage 3: orchestrator (added in the next step)
     metadata: dict
     departments_needed: list[str]
+    assignments: dict  # department_id -> {"reason", "extract", "extract_is_verbatim"}
+    missing_fields: list[str]
+    other_departments_mentioned: list[str]
 
     # Stage 4: workers and synthesizer (added later)
     sections: dict
@@ -34,3 +37,8 @@ class RfpIntakeState(TypedDict, total=False):
 
     # Set if any stage crashes, so the ticket can say "failed"
     error: str | None
+
+
+# The four departments (CONTEXT-brasaland.md section 2.1). Use these exact
+# strings everywhere. "operaciones" is Spanish on purpose.
+DEPARTMENT_IDS = ("marketing", "operaciones", "procurement", "training")
