@@ -62,7 +62,9 @@ For each department that applies give:
 - "reason": one plain sentence on why it applies
 - "extract": the exact sentences from the document that this department needs. \
 Copy them word for word, whole sentences only, one per line. Do not use "..." \
-and do not change any words. Do not add anything.
+and do not change any words. Do not add anything. For "marketing", always \
+include the line that names the client's contact person (for example the \
+signature), if the document has one.
 
 If the document mentions a department that is not one of the four ids above \
 (for example Finance or Legal), do NOT add it to "departments". Put its name in \
