@@ -7,7 +7,13 @@ the RFP graph never shares anything with the support agent's graph.
 Each stage fills in its own fields and leaves the rest alone.
 """
 
-from typing import TypedDict
+import operator
+from typing import Annotated, TypedDict
+
+
+def _first(current, new):
+    """If two parallel workers both fail, keep the first error message."""
+    return current or new
 
 
 class RfpIntakeState(TypedDict, total=False):
@@ -32,11 +38,15 @@ class RfpIntakeState(TypedDict, total=False):
     other_departments_mentioned: list[str]
 
     # Stage 4: workers and synthesizer (added later)
-    sections: dict
+    # Each worker adds its own department. operator.or_ merges the dicts.
+    sections: Annotated[dict, operator.or_]
     sales_summary: dict
 
     # Set if any stage crashes, so the ticket can say "failed"
-    error: str | None
+    error: Annotated[str | None, _first]
+
+    # Set at the very end by run_intake(): intake_complete / discarded / failed
+    status: str
 
 
 # The four departments (CONTEXT-brasaland.md section 2.1). Use these exact
