@@ -1,3 +1,5 @@
 fastapi
 uvicorn[standard]
 python-multipart
+markitdown[pdf]==0.1.8
+py-readability-metrics==1.4.5
