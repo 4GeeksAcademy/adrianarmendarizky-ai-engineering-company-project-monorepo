@@ -84,7 +84,21 @@ function TicketView({ ticket }: { ticket: TicketDetail }) {
         </p>
       )}
 
-      {meta && (
+      {meta && ticket.status === "discarded" && (
+        <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Language" value={meta.language} />
+          <Field
+            label="Readability"
+            value={
+              meta.flesch_kincaid !== null && meta.gunning_fog !== null
+                ? `Flesch-Kincaid ${meta.flesch_kincaid.toFixed(1)} · Gunning Fog ${meta.gunning_fog.toFixed(1)} · ${meta.word_count} words`
+                : meta.readability_note
+            }
+          />
+        </dl>
+      )}
+
+      {meta && ticket.status !== "discarded" && (
         <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Client" value={meta.client_name} />
           <Field label="Location" value={meta.location} />
@@ -256,7 +270,7 @@ export default function RfpPage() {
       <table className="mt-6 w-full text-left text-sm">
         <thead>
           <tr className="border-b text-xs uppercase tracking-wide text-gray-500">
-            <th className="py-2">#</th>
+            <th className="py-2 pr-4">#</th>
             <th>File</th>
             <th>Client</th>
             <th>Departments</th>
@@ -280,7 +294,7 @@ export default function RfpPage() {
                 t.ticket_id === selectedId ? "bg-gray-100" : ""
               }`}
             >
-              <td className="py-2">{t.ticket_id}</td>
+              <td className="py-2 pr-4">{t.ticket_id}</td>
               <td>{t.original_filename}</td>
               <td>{t.client_name ?? "—"}</td>
               <td>{t.departments_needed.length ? t.departments_needed.join(", ") : "—"}</td>
