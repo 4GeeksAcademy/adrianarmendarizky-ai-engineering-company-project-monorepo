@@ -242,7 +242,7 @@ export default function RfpPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <div className="mx-auto max-w-5xl">
       <h1 className="text-2xl font-semibold">RFP intake</h1>
       <p className="mt-1 text-sm text-gray-600">
         Upload a client RFP (PDF). Sales can read what each department needs
@@ -308,6 +308,6 @@ export default function RfpPage() {
       </table>
 
       {detail && selectedId === detail.ticket_id && <TicketView ticket={detail} />}
-    </main>
+    </div>
   );
 }
