@@ -76,7 +76,7 @@ that this department must respond to.
 List the numbers of the aspects that the draft clearly does NOT respond to. Count an \
 aspect as covered if the draft addresses it in any way, even briefly. Do not list an \
 aspect that is only background and needs no response from Brasaland (for example a \
-date in the client's own timeline).
+date in the client's own timeline, the client's contact person or the proposal deadline). Facts that only identify the client or schedule the RFP are background: never list them.
 
 Reply with JSON only, no other text:
 {"missing": [2, 5]}
@@ -154,6 +154,21 @@ def find_competitors(draft: str, metadata: dict) -> list[dict]:
     return found
 
 
+# "1 USD = 4,000 COP": the reference-rate sentence the generator is asked to
+# write. Its "1" is part of the phrase, not a figure. It is only skipped when
+# the rate matches the configured COP_PER_USD, so a different rate is still flagged.
+RATE_PHRASE = re.compile(r"\b1\s*USD\s*(?:=|equals|is)\s*([\d.,]+)\s*COP", re.IGNORECASE)
+
+
+def _strip_reference_rate(line: str) -> str:
+    real = re.sub(r"\D", "", f"{settings.COP_PER_USD:,.0f}")
+
+    def _drop_if_real(match):
+        return "" if re.sub(r"\D", "", match.group(1)) == real else match.group(0)
+
+    return RATE_PHRASE.sub(_drop_if_real, line)
+
+
 def check_no_invented_numbers(draft: str, allowed: set[str]) -> list[dict]:
     """Flag any line with a number that is not in the RFP facts (CONTEXT 2.3)."""
     found = []
@@ -162,7 +177,7 @@ def check_no_invented_numbers(draft: str, allowed: set[str]) -> list[dict]:
             continue  # a bare list marker ("1."): sentence splitting can leave one alone
         line = re.sub(r"^\s*\d+[.)]\s+", "", line)  # a marker in front of text is not a figure either
         bad = []
-        for token in re.findall(r"\d[\d.,]*", line):
+        for token in re.findall(r"\d[\d.,]*", _strip_reference_rate(line)):
             digits = re.sub(r"\D", "", token)
             if digits not in allowed:
                 bad.append(token.rstrip(".,"))

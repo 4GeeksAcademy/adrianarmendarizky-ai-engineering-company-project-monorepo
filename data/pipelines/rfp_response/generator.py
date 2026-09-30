@@ -48,7 +48,8 @@ DEPARTMENTS = {
         "title": "Ingredient Costs and Supply",
         "focus": (
             "Ingredient cost and supply: what drives the ingredient cost "
-            "(volume, frequency, menu), supplier lead times, and how the "
+            "(volume, frequency, menu), supplier lead times (say they are to be "
+            "confirmed unless the facts give them), and how the "
             "estimated cost will be confirmed."
         ),
     },

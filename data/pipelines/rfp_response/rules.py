@@ -45,15 +45,20 @@ COP_MARK = re.compile(r"\bCOP\b|COL\$", re.IGNORECASE)
 
 
 def check_price_dual_currency(text: str) -> list[dict]:
+    # One bullet or paragraph counts as one place: "$60,000 USD. That is
+    # 240,000,000 COP." is fine, because both currencies are shown together.
     found = []
-    for line in _sentences(text):
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
         has_usd = bool(USD_MARK.search(line))
         has_cop = bool(COP_MARK.search(line))
         if re.search(r"\d", line) and (has_usd or has_cop) and not (has_usd and has_cop):
             shown, missing = ("USD", "COP") if has_usd else ("COP", "USD")
             found.append(_violation(
                 RULE_PRICE,
-                f"This price is shown in {shown} only. Give it in {missing} as well, in the same sentence.",
+                f"This price is shown in {shown} only. Give it in {missing} as well, in the same bullet or paragraph.",
                 line,
             ))
     return found

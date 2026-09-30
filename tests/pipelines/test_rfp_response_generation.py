@@ -334,3 +334,28 @@ def test_the_three_evaluators_really_run_at_the_same_time(monkeypatch):
     result = evaluators.evaluate_section(
         "operaciones", GOOD_DRAFT, metadata=METADATA, key_aspects=ASPECTS, open_questions=QUESTIONS)
     assert result["overall_pass"] is True
+
+
+# --- fixes found in the first live run -------------------------------------------
+
+def test_the_reference_rate_sentence_is_not_flagged_as_an_invented_number(monkeypatch):
+    draft = GOOD_DRAFT + "- The reference rate is 1 USD = 4,000 COP, to be confirmed.\n"
+    assert compliance(monkeypatch, draft)["pass"] is True
+
+
+def test_a_different_rate_is_still_flagged(monkeypatch):
+    draft = GOOD_DRAFT + "- The reference rate is 1 USD = 3,900 COP, to be confirmed.\n"
+    result = compliance(monkeypatch, draft)
+    assert result["rule_ids"] == ["NO-INVENTED-NUMBERS"]
+    assert "3,900" in result["violations"][0]["message"]
+
+
+def test_relevance_checker_is_told_contact_and_deadline_are_background():
+    assert "contact person" in evaluators.RELEVANCE_SYSTEM
+    assert "proposal deadline" in evaluators.RELEVANCE_SYSTEM
+
+
+def test_procurement_is_told_not_to_state_supplier_lead_times_on_its_own(monkeypatch):
+    seen = capture(monkeypatch)
+    generator.generate_draft("procurement", METADATA, ASPECTS, [])
+    assert "unless the facts give them" in seen["system"]

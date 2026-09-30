@@ -144,3 +144,16 @@ def test_feedback_lists_each_missing_aspect():
     assert result["overall_pass"] is False
     assert "Peak season staffing" in result["feedback_for_generator"]
     assert "Deadline" in result["feedback_for_generator"]
+
+
+# --- a price counts as shown in both currencies within one bullet or paragraph ---
+
+def test_price_in_two_sentences_of_the_same_bullet_passes():
+    text = "- The contract value is $60,000 USD. In local currency that is 240,000,000 COP."
+    assert rules.check_price_dual_currency(text) == []
+
+
+def test_price_split_across_two_bullets_still_fails():
+    text = "- The contract value is $60,000 USD.\n- In local currency that is 240,000,000 COP."
+    violations = rules.check_price_dual_currency(text)
+    assert [v["rule_id"] for v in violations] == ["PRICE-DUAL-CURRENCY", "PRICE-DUAL-CURRENCY"]
