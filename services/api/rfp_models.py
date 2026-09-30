@@ -30,6 +30,11 @@ STATUS_DISCARDED = "discarded"
 STATUS_INTAKE_COMPLETE = "intake_complete"
 STATUS_FAILED = "failed"
 
+# Part 2 statuses (CONTEXT-brasaland.md section 2.3)
+STATUS_DRAFTING = "drafting"
+STATUS_UNDER_EVALUATION = "under_evaluation"
+STATUS_NEEDS_HUMAN_REVIEW = "needs_human_review"
+
 
 def _now() -> datetime:
     # UTC time, stored without a timezone label (the columns have none).
