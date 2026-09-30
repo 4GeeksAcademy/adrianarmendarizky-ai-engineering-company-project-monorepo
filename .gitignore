@@ -9,3 +9,4 @@ workspace.tar.gz
 !.env.example
 
 services/api/agent_checkpoints.db*
+data/raw/rfp_uploads/
