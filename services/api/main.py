@@ -33,6 +33,7 @@ from routes.knowledge import router as knowledge_router
 from routes.agent import router as agent_router
 from routes.profiles import router as profiles_router
 from routes.reporting import router as reporting_router
+from routes.rfp import router as rfp_router, fail_interrupted_tickets
 from routes.suppliers import router as suppliers_router
 from routes.tasks import router as tasks_router
 from routes.telemetry import router as telemetry_router
@@ -52,6 +53,8 @@ async def lifespan(app: FastAPI):
     # Both no-op quietly if DATABASE_URL isn't set yet.
     init_inventory_db()
     seed_inventory()
+    # RFP intake: any ticket still "analyzing" was cut off by a restart.
+    fail_interrupted_tickets()
     yield
 
 
@@ -91,6 +94,7 @@ app.include_router(reporting_router)
 app.include_router(tasks_router)
 app.include_router(knowledge_router)
 app.include_router(agent_router)
+app.include_router(rfp_router)
 
 
 @app.get("/")
