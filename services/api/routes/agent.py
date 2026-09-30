@@ -29,6 +29,13 @@ Milestone 8 (agent memory) changes this route in three ways:
   - GET /agent/memory/facts and GET /agent/memory/audit let people read what
     the agent remembers and the log of every proposal and decision.
 
+Milestone 8 Part 2 (SEC-114, guardrail harness) adds two more:
+  - The response now reports guard_scope: "domain" for an ordinary answer,
+    or which guardrail scope blocked/redirected this message otherwise.
+  - GET /agent/guardrails/summary and GET /agent/guardrails/events let
+    people read how often each guardrail has fired and the full log behind
+    that count -- see agent/guard_nodes.py and agent/guardrails/.
+
 No retrieval, generation, or routing logic lives here -- this route only
 ever calls graph.invoke() and get_trace(), the same "the endpoint
 contains no business logic" rule routes/knowledge.py already follows for
@@ -47,6 +54,7 @@ from pydantic import BaseModel
 from redis.exceptions import RedisError
 
 from agent.graph import get_trace, graph
+from agent.guardrails import telemetry as guard_telemetry
 from agent.memory import policy
 from agent.memory.store import get_store
 from dependencies import get_current_user
@@ -81,6 +89,9 @@ class AgentQueryResponse(BaseModel):
     session_id: str
     # Set when this answer ends with a "do you want me to remember this?" question.
     pending_memory_proposal: PendingProposal | None = None
+    # Milestone 8 Part 2 (SEC-114): "domain" for an ordinary answer; otherwise which
+    # guardrail scope the input guard classified this message as and answered from.
+    guard_scope: str | None = None
 
 
 class TraceStep(BaseModel):
@@ -120,6 +131,7 @@ def post_agent_query(
         pending_memory_proposal=PendingProposal(
             **{k: proposal[k] for k in PendingProposal.model_fields}
         ) if proposal else None,
+        guard_scope=result.get("guard_scope"),
     )
 
 
@@ -171,3 +183,38 @@ def get_memory_audit(
     except RedisError:
         logger.exception("agent memory unavailable")
         raise HTTPException(status_code=503, detail="Agent memory is unavailable right now.")
+
+
+# --- Guardrail observability (Milestone 8 Part 2 / SEC-114) ----------------
+
+
+@router.get("/guardrails/summary")
+def get_guardrails_summary(current_user: User = Depends(get_current_user)) -> dict:
+    """How many times each guardrail has fired, by category (structural,
+    content, security) and by specific reason -- the "simple summary" the
+    ticket asks for. Managers and admins only, same bar as memory reads."""
+    if current_user.role not in MEMORY_ROLES:
+        raise HTTPException(status_code=403, detail="Only managers and admins can read guardrail telemetry.")
+    try:
+        return guard_telemetry.summary()
+    except RedisError:
+        logger.exception("guardrail telemetry unavailable")
+        raise HTTPException(status_code=503, detail="Guardrail telemetry is unavailable right now.")
+
+
+@router.get("/guardrails/events")
+def get_guardrails_events(
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """The full, timestamped log behind the summary above: every guardrail
+    block or redirection, with its category and reason. Admins only, same
+    bar as the memory audit log."""
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Only admins can read the guardrail event log.")
+    try:
+        return guard_telemetry.read_events(limit=limit, offset=offset)
+    except RedisError:
+        logger.exception("guardrail telemetry unavailable")
+        raise HTTPException(status_code=503, detail="Guardrail telemetry is unavailable right now.")

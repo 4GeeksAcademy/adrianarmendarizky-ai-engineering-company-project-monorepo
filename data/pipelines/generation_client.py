@@ -23,13 +23,25 @@ _client = OpenAI(
 )
 
 
-def call_generation_llm(prompt: str) -> str:
+def call_generation_llm(prompt: str, *, system: str | None = None) -> str:
     """Sends one prompt to the generation model and returns its text
     reply. Kept to this one call in, one string out shape so tests can
-    monkeypatch it without knowing anything about the OpenAI SDK."""
+    monkeypatch it without knowing anything about the OpenAI SDK.
+
+    system (optional, Milestone 8 Part 2 / SEC-114): when given, sent as
+    a genuine system-role message, separate from the user-role prompt --
+    real message-role separation, backing up the code-level separation
+    the rest of the guardrail harness does (agent/guardrails/). Omitted
+    (the default) preserves the exact single-message behavior every
+    existing caller (rag.py before this ticket, agent/memory/llm_steps.py)
+    already relies on."""
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
     response = _client.chat.completions.create(
         model=GENERATION_MODEL_ID,
-        messages=[{"role": "user", "content": prompt}],
+        messages=messages,
         temperature=0.2,  # low but not zero -- natural salesperson phrasing, not creative
     )
     return response.choices[0].message.content

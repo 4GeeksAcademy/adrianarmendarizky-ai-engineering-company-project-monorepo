@@ -464,7 +464,10 @@ def test_without_a_user_and_session_the_agent_behaves_as_before(store, llm, seen
     assert llm.calls == [] and result["memory_proposal"] is None
     assert result["answer"] == NO_INFO_MESSAGE
     assert [s["node"] for s in get_trace(config)] == [
-        "__start__", "receive_question", "check_pending", "load_memory", "retrieve", "generate", "self_evaluate"]
+        # Milestone 8 Part 2: guard_input and output_guard are always in the
+        # trace too (see test_agent_guardrails.py for their own coverage).
+        "__start__", "receive_question", "guard_input", "check_pending", "load_memory",
+        "retrieve", "generate", "self_evaluate", "output_guard"]
 
 
 def test_if_redis_is_down_the_agent_still_answers(llm, seen):
@@ -486,11 +489,12 @@ def test_the_trace_shows_the_memory_steps_and_the_shortcut_for_a_plain_yes(store
     llm.evaluations.append(supplier_correction())
     _, config = run("Actually the Medellín meat supplier delivers on Tuesdays, not Mondays")
     assert [s["node"] for s in get_trace(config)] == [
-        "__start__", "receive_question", "check_pending", "load_memory", "retrieve", "generate", "self_evaluate"]
+        "__start__", "receive_question", "guard_input", "check_pending", "load_memory",
+        "retrieve", "generate", "self_evaluate", "output_guard"]
     llm.decisions.append(decision("approve"))
     _, config = run("yes")
     assert [s["node"] for s in get_trace(config)] == [
-        "__start__", "receive_question", "check_pending", "self_evaluate"]
+        "__start__", "receive_question", "guard_input", "check_pending", "self_evaluate", "output_guard"]
 
 
 # --- consolidation and cleanup ----------------------------------------------

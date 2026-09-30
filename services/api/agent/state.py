@@ -39,3 +39,7 @@ class AgentState(TypedDict):
     memory_handled: bool               # a pending proposal was resolved/edited this turn
     skip_rest: bool                    # the message was only a yes/no: go straight to the end
     memory_proposal: dict | None       # the new proposal opened this turn, if any
+
+    # Guardrail harness (Milestone 8, Part 2 -- ticket SEC-114) -- see
+    # agent/guard_nodes.py and agent/guardrails/.
+    guard_scope: str | None            # "domain" | "casual" | "personal_task" | "instruction_change"

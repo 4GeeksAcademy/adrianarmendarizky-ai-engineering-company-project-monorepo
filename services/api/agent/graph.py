@@ -2,16 +2,27 @@
 services/api/agent/graph.py -- Part 2 of 2 (external tools): builds and
 compiles the agent graph.
 
-Graph shape (extended from Part 1):
+Graph shape (extended from Part 1, then from Milestone 8 Part 1):
 
-    START -> receive_question -> check_pending -> load_memory -> [route_question] -> any subset of:
-                                       ticket_tool
-                                       inventory_tool
-                                       retrieve
-                                  (chosen in parallel when more than one
-                                   applies -- this is the "RAG, a tool,
-                                   or both" the ticket asks for)
-             all chosen branches -> generate -> self_evaluate -> END
+    START -> receive_question -> guard_input -> [route_after_guard]
+                 "domain"  -> check_pending -> load_memory -> [route_question] -> any subset of:
+                                                    ticket_tool
+                                                    inventory_tool
+                                                    retrieve
+                                               (chosen in parallel when more than one
+                                                applies -- this is the "RAG, a tool,
+                                                or both" the ticket asks for)
+                              all chosen branches -> generate -> self_evaluate -> output_guard -> END
+                 else      -> output_guard -> END   (blocked: guard_input already set the answer)
+
+guard_input and output_guard are the guardrail-harness steps (Milestone 8,
+Part 2 / ticket SEC-114; see guard_nodes.py). A message guard_input doesn't
+classify as "domain" -- an instruction-change attempt, an off-domain
+personal task, or small talk -- never reaches memory, tool routing, or the
+generation model at all: it goes straight to output_guard with its canned
+answer already set. output_guard is the LAST node on every path, blocked or
+not, so nothing reaches the user without a final scan for a leaked system
+prompt or sensitive content.
 
 check_pending, load_memory and self_evaluate are the agent-memory steps
 (Milestone 8, Part 1; see memory_nodes.py). When the message only answers a
@@ -40,6 +51,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
+from .guard_nodes import guard_input_node, output_guard_node, route_after_guard
 from .memory_nodes import (
     check_pending_node,
     load_memory_node,
@@ -70,11 +82,22 @@ def build_graph() -> StateGraph:
     builder.add_node("check_pending", check_pending_node)
     builder.add_node("load_memory", load_memory_node)
     builder.add_node("self_evaluate", self_evaluate_node)
+    # Guardrail-harness steps (Milestone 8, Part 2 / SEC-114) -- see guard_nodes.py.
+    builder.add_node("guard_input", guard_input_node)
+    builder.add_node("output_guard", output_guard_node)
 
     builder.add_edge(START, "receive_question")
-    builder.add_edge("receive_question", "check_pending")
+    builder.add_edge("receive_question", "guard_input")
+    # A message the input guard doesn't classify as "domain" already has
+    # its canned answer set and skips straight to the final output scan --
+    # never reaching memory, tool routing, or the generation model.
+    builder.add_conditional_edges(
+        "guard_input",
+        route_after_guard,
+        {"check_pending": "check_pending", "output_guard": "output_guard"},
+    )
     # A message that only answers a memory proposal ("yes") has nothing else
-    # to look up, so it skips straight to the end.
+    # to look up, so it skips straight to self_evaluate.
     builder.add_conditional_edges(
         "check_pending",
         route_after_decision,
@@ -93,7 +116,10 @@ def build_graph() -> StateGraph:
     builder.add_edge("inventory_tool", "generate")
     builder.add_edge("retrieve", "generate")
     builder.add_edge("generate", "self_evaluate")
-    builder.add_edge("self_evaluate", END)
+    # output_guard is the one place every path (blocked or not) converges
+    # before END -- see the module docstring.
+    builder.add_edge("self_evaluate", "output_guard")
+    builder.add_edge("output_guard", END)
     return builder
 
 

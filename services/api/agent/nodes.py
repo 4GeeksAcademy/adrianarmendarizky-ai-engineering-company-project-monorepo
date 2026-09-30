@@ -39,6 +39,8 @@ sys.path.insert(0, str(REPO_ROOT / "data" / "pipelines"))
 from rag import retrieve, generate_answer, NO_INFO_MESSAGE  # noqa: E402
 
 from . import mcp_client
+from .guardrails import patterns as guard_patterns
+from .guardrails import telemetry as guard_telemetry
 from .state import AgentState
 
 # --- Question understanding (shared between routing and the tool nodes) --
@@ -112,6 +114,7 @@ def receive_question_node(state: AgentState) -> dict:
         "memory_handled": False,
         "skip_rest": False,
         "memory_proposal": None,
+        "guard_scope": None,
     }
 
 
@@ -135,7 +138,12 @@ def ticket_tool_node(state: AgentState) -> dict:
     """Looks the ticket up through the MCP server (tool:
     check_ticket_status) -- read-only, with the agent's own read-only
     token. Never fabricates a status: success sets ticket_info, and every
-    failure sets a specific, honest ticket_error instead."""
+    failure sets a specific, honest ticket_error instead.
+
+    Milestone 8 Part 2 (SEC-114): a malformed tool result (not a dict) is
+    a STRUCTURAL guardrail failure -- logged as such, same category the
+    ticket's own harness note uses, distinct from a content or security
+    failure."""
     ticket_id = extract_ticket_id(state["question"])
     try:
         ticket = mcp_client.call_tool("check_ticket_status", {"ticket_id": ticket_id})
@@ -146,6 +154,7 @@ def ticket_tool_node(state: AgentState) -> dict:
     except mcp_client.MCPUnavailableError:
         return {"ticket_error": _TICKET_UNAVAILABLE}
     if not isinstance(ticket, dict):
+        guard_telemetry.log_event("structural", "malformed_tool_result", tool="check_ticket_status")
         return {"ticket_error": _TICKET_UNAVAILABLE}
     return {"ticket_info": ticket}
 
@@ -161,6 +170,9 @@ def inventory_tool_node(state: AgentState) -> dict:
     except (mcp_client.MCPToolError, mcp_client.MCPUnavailableError):
         return {"inventory_error": _INVENTORY_UNAVAILABLE}
     if not isinstance(products, list):
+        # Milestone 8 Part 2 (SEC-114): a malformed tool result is a
+        # STRUCTURAL guardrail failure -- see ticket_tool_node above.
+        guard_telemetry.log_event("structural", "malformed_tool_result", tool="query_inventory")
         return {"inventory_error": _INVENTORY_UNAVAILABLE}
     question = state["question"].lower()
     matches = [p for p in products if p["name"].lower() in question]
@@ -170,15 +182,37 @@ def inventory_tool_node(state: AgentState) -> dict:
 
 
 def _format_ticket_answer(ticket: dict) -> str:
+    """Milestone 8 Part 2 (SEC-114): the ticket's title and category are
+    text someone else typed when they filed the ticket, so before it is
+    shown to a DIFFERENT person asking about it, it goes through the same
+    isolation layer as a RAG chunk or a manager note (guardrails/patterns.py).
+    There is no LLM in this path -- a ticket's status is formatted directly,
+    never generated -- so there is nothing here for an injected phrase to
+    manipulate, but the raw text would otherwise still reach the user
+    unfiltered."""
+    title, title_flagged = guard_patterns.sanitize_external_content(ticket["title"])
+    category, category_flagged = guard_patterns.sanitize_external_content(ticket["category"])
+    if title_flagged or category_flagged:
+        guard_telemetry.log_event("security", "poisoned_tool_content", tool="check_ticket_status",
+                                  ticket_id=ticket.get("id"))
     return (
-        f"Ticket #{ticket['id']} ({ticket['title']}): status {ticket['status']}, "
-        f"category {ticket['category']}, branch {ticket['branch']} "
+        f"Ticket #{ticket['id']} ({title}): status {ticket['status']}, "
+        f"category {category}, branch {ticket['branch']} "
         f"(last updated {ticket['updated_at']})."
     )
 
 
 def _format_inventory_answer(matches: list[dict]) -> str:
-    lines = [f"{m['name']}: {m['current_stock']} units in stock." for m in matches]
+    """Same isolation as _format_ticket_answer above, applied to each
+    product name."""
+    lines = []
+    flagged_any = False
+    for m in matches:
+        name, was_flagged = guard_patterns.sanitize_external_content(m["name"])
+        flagged_any = flagged_any or was_flagged
+        lines.append(f"{name}: {m['current_stock']} units in stock.")
+    if flagged_any:
+        guard_telemetry.log_event("security", "poisoned_tool_content", tool="query_inventory")
     return " ".join(lines)
 
 
@@ -207,9 +241,25 @@ def generate_node(state: AgentState) -> dict:
     # If the question matched no documents and no tool answered it, the notes
     # alone can still answer it (e.g. "when does the Medellin meat supplier
     # deliver?" after a manager corrected the day).
-    memory_notes = state.get("memory_notes")
-    if state.get("context") or (memory_notes and not parts):
-        parts.append(generate_answer(state["question"], state.get("context") or [], memory_notes))
+    #
+    # Milestone 8 Part 2 (SEC-114): both the retrieved context and the saved
+    # notes came from outside our own code (a document in the knowledge base;
+    # a fact a manager typed), so both go through the isolation layer before
+    # they can reach the generation prompt -- a poisoned document or note is
+    # withheld rather than passed through as if it were trustworthy, and the
+    # attempt is logged. This is what "content from a tool or a RAG document
+    # must never be treated as a system instruction" actually means in code.
+    context = state.get("context") or []
+    memory_notes = state.get("memory_notes") or []
+    if context or memory_notes:
+        context, flagged_chunks = guard_patterns.sanitize_chunks(context)
+        memory_notes, flagged_notes = guard_patterns.sanitize_notes(memory_notes)
+        for source in flagged_chunks:
+            guard_telemetry.log_event("security", "poisoned_rag_content", source_document=source)
+        for excerpt in flagged_notes:
+            guard_telemetry.log_event("security", "poisoned_memory_note", excerpt=excerpt)
+    if context or (memory_notes and not parts):
+        parts.append(generate_answer(state["question"], context, memory_notes or None))
 
     if not parts:
         parts.append(NO_INFO_MESSAGE)
