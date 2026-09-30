@@ -103,8 +103,11 @@ def test_trace_is_queryable_after_the_run_from_a_fresh_lookup():
     assert [step["node"] for step in trace_again] == [
         "__start__",
         "receive_question",
+        "check_pending",  # Milestone 8: the three memory steps are always in the trace,
+        "load_memory",    # but do nothing when the run has no user_id/session_id
         "retrieve",
         "generate",
+        "self_evaluate",
     ]
 
     # A thread_id that never ran anything has no trace at all.

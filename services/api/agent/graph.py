@@ -4,14 +4,18 @@ compiles the agent graph.
 
 Graph shape (extended from Part 1):
 
-    START -> receive_question -> [route_question] -> any subset of:
+    START -> receive_question -> check_pending -> load_memory -> [route_question] -> any subset of:
                                        ticket_tool
                                        inventory_tool
                                        retrieve
                                   (chosen in parallel when more than one
                                    applies -- this is the "RAG, a tool,
                                    or both" the ticket asks for)
-             all chosen branches -> generate -> END
+             all chosen branches -> generate -> self_evaluate -> END
+
+check_pending, load_memory and self_evaluate are the agent-memory steps
+(Milestone 8, Part 1; see memory_nodes.py). When the message only answers a
+memory proposal, check_pending jumps straight to self_evaluate.
 
 route_question (in nodes.py) is the one real routing decision, based on
 the question's content: a ticket ID pattern routes to ticket_tool, a
@@ -36,6 +40,12 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
+from .memory_nodes import (
+    check_pending_node,
+    load_memory_node,
+    route_after_decision,
+    self_evaluate_node,
+)
 from .nodes import (
     generate_node,
     inventory_tool_node,
@@ -56,10 +66,22 @@ def build_graph() -> StateGraph:
     builder.add_node("inventory_tool", inventory_tool_node)
     builder.add_node("retrieve", retrieve_node)
     builder.add_node("generate", generate_node)
+    # Memory steps (Milestone 8, Part 1) -- see memory_nodes.py.
+    builder.add_node("check_pending", check_pending_node)
+    builder.add_node("load_memory", load_memory_node)
+    builder.add_node("self_evaluate", self_evaluate_node)
 
     builder.add_edge(START, "receive_question")
+    builder.add_edge("receive_question", "check_pending")
+    # A message that only answers a memory proposal ("yes") has nothing else
+    # to look up, so it skips straight to the end.
     builder.add_conditional_edges(
-        "receive_question",
+        "check_pending",
+        route_after_decision,
+        {"load_memory": "load_memory", "self_evaluate": "self_evaluate"},
+    )
+    builder.add_conditional_edges(
+        "load_memory",
         route_question,
         {"ticket_tool": "ticket_tool", "inventory_tool": "inventory_tool", "retrieve": "retrieve"},
     )
@@ -70,7 +92,8 @@ def build_graph() -> StateGraph:
     builder.add_edge("ticket_tool", "generate")
     builder.add_edge("inventory_tool", "generate")
     builder.add_edge("retrieve", "generate")
-    builder.add_edge("generate", END)
+    builder.add_edge("generate", "self_evaluate")
+    builder.add_edge("self_evaluate", END)
     return builder
 
 

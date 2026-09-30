@@ -28,3 +28,14 @@ class AgentState(TypedDict):
     inventory_error: str | None
 
     answer: str | None
+
+    # Memory (Milestone 8, Part 1) -- see agent/memory_nodes.py.
+    # user_id / session_id come in with the request; without both, every
+    # memory step is skipped and the agent behaves as before.
+    user_id: str | None
+    session_id: str | None
+    memory_notes: list[str] | None     # saved facts for the locations the question mentions
+    memory_ack: str | None             # e.g. "Saved. I'll remember..." for a proposal resolved this turn
+    memory_handled: bool               # a pending proposal was resolved/edited this turn
+    skip_rest: bool                    # the message was only a yes/no: go straight to the end
+    memory_proposal: dict | None       # the new proposal opened this turn, if any
