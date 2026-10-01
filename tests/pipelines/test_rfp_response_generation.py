@@ -359,3 +359,15 @@ def test_procurement_is_told_not_to_state_supplier_lead_times_on_its_own(monkeyp
     seen = capture(monkeypatch)
     generator.generate_draft("procurement", METADATA, ASPECTS, [])
     assert "unless the facts give them" in seen["system"]
+
+
+# --- only the operations section may state the 10-business-day minimum -----------
+
+def test_only_operations_is_allowed_to_state_the_setup_minimum(monkeypatch):
+    seen = capture(monkeypatch)
+    generator.generate_draft("operaciones", METADATA, ASPECTS, [])
+    assert "at least 10 business days" in seen["system"]
+    for department in ("marketing", "procurement", "training"):
+        generator.generate_draft(department, METADATA, ASPECTS, [])
+        assert "at least 10 business days" not in seen["system"]
+        assert "Never state a setup, delivery or development time yourself" in seen["system"]

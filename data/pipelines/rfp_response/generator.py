@@ -74,9 +74,8 @@ GUIDELINE_TEXT = {
         + ", ".join(settings.BRAND_PILLARS) + "."
     ),
     rules.RULE_SETUP: (
-        f"If you mention a setup or delivery time, it must be at least "
-        f"{settings.MIN_SETUP_BUSINESS_DAYS} business days. If the facts give "
-        f"no time, do not promise one."
+        "Never state a setup, delivery or development time yourself. If the "
+        "facts give none, write \"to be confirmed\"."
     ),
     rules.RULE_COMPETITORS: "Never mention another restaurant or catering company by name.",
     rules.RULE_VALIDITY: (
@@ -85,11 +84,26 @@ GUIDELINE_TEXT = {
 }
 
 
+# Only the operations section speaks for Brasaland about setup and delivery, so
+# only it may state the company minimum. Without this the other departments
+# copied "at least 10 business days" into their own timelines (for example,
+# how long training takes), which no fact supports.
+OPERATIONS_SETUP_TEXT = (
+    f"If you mention a setup or delivery time, it must be at least "
+    f"{settings.MIN_SETUP_BUSINESS_DAYS} business days. If the facts give no time, "
+    f"write \"to be confirmed\"; the only time you may state yourself is that any "
+    f"setup period is at least {settings.MIN_SETUP_BUSINESS_DAYS} business days."
+)
+
+
 def guidelines_for(department_id: str) -> list[str]:
     lines = []
     for rule_id, rule in rules.RULES.items():
         if rule["applies_to"] == rules.ALL or department_id in rule["applies_to"]:
-            lines.append(GUIDELINE_TEXT[rule_id])
+            if rule_id == rules.RULE_SETUP and department_id == "operaciones":
+                lines.append(OPERATIONS_SETUP_TEXT)
+            else:
+                lines.append(GUIDELINE_TEXT[rule_id])
     return lines
 
 
