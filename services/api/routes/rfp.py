@@ -1,27 +1,44 @@
 """
-routes/rfp.py -- the HTTP side of the RFP intake workflow (Milestone 9, Part 1).
+routes/rfp.py -- the HTTP side of the RFP workflow (Milestone 9).
 
-Three endpoints, all behind login (same get_current_user as /inventory):
+Part 1 (intake), behind login (same get_current_user as /inventory):
   POST /rfp/tickets        upload one PDF. Saves it under data/raw/rfp_uploads/,
                            creates the ticket as "analyzing", starts the
                            pipeline in the background, and answers right away
                            with 202 + the ticket_id.
   GET  /rfp/tickets        list of tickets, newest first (for the UI table).
-  GET  /rfp/tickets/{id}   one ticket: status, metadata, key aspects, and the
-                           Sales summary. The UI polls this one.
+  GET  /rfp/tickets/{id}   one ticket: status, metadata, key aspects, the
+                           Sales summary and (Part 2) the drafts. The UI polls
+                           this one.
 
-No agent logic lives here. This file only calls run_intake() from
-data/pipelines/rfp_intake/graph.py and saves what it returns.
+Part 2 (response generation):
+  POST /rfp/tickets/{id}/generate   start the draft for every department of a
+                           ticket that finished intake. Answers 202 at once.
 
-A ticket can never stay stuck on "analyzing":
-  - if the pipeline returns an error, the ticket becomes "failed"
-  - if saving the results crashes, the ticket becomes "failed"
-  - if the whole server restarts mid-run, fail_interrupted_tickets()
-    (called from main.py at startup) marks those tickets "failed"
+No agent logic lives here. This file only calls run_intake() and
+run_response() and saves what they return.
+
+Part 2 starts from what Part 1 SAVED (the ticket, its metadata and each
+department's key aspects and open questions). The PDF is never read again.
+
+The ticket's status follows the work in real time:
+    intake_complete -> drafting -> under_evaluation -> needs_human_review
+                                                    \\-> (stays under_evaluation
+                                                         when every section passed)
+Each department's row also says what it is doing right now (evaluation_results
+has section_status "running", plus the stage and the draft number).
+
+A ticket can never stay stuck:
+  - Part 1: a failed or crashed intake becomes "failed"
+  - Part 2: a failed or crashed generation goes back to "intake_complete" with
+    an error_message, so the user can simply try again
+  - a server restart mid-run is cleaned up by fail_interrupted_tickets()
+    (called from main.py at startup)
 """
 
 import sys
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -37,8 +54,11 @@ from rfp_models import (
     RfpTicket,
     STATUS_ANALYZING,
     STATUS_DISCARDED,
+    STATUS_DRAFTING,
     STATUS_FAILED,
     STATUS_INTAKE_COMPLETE,
+    STATUS_NEEDS_HUMAN_REVIEW,
+    STATUS_UNDER_EVALUATION,
 )
 
 # data/pipelines/ isn't an installable package -- same hand-rolled sys.path
@@ -47,9 +67,16 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "data" / "pipelines"))
 
 from rfp_intake.graph import run_intake  # noqa: E402  (data/pipelines/rfp_intake/graph.py)
+from rfp_response.graph import run_response  # noqa: E402  (data/pipelines/rfp_response/graph.py)
 
 UPLOAD_DIR = REPO_ROOT / "data" / "raw" / "rfp_uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+# A section is finished when its evaluation_results says so (Part 2).
+SECTION_DONE = ("passed", STATUS_NEEDS_HUMAN_REVIEW)
+# Tickets that drafts can be (re)generated for. A ticket whose drafts are being
+# written right now is refused separately (see _generation_running).
+CAN_GENERATE = (STATUS_INTAKE_COMPLETE, STATUS_UNDER_EVALUATION, STATUS_NEEDS_HUMAN_REVIEW)
 
 router = APIRouter(prefix="/rfp", tags=["rfp"])
 
@@ -72,7 +99,7 @@ def _pdf_location(stored: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Background work
+# Part 1: intake, background work
 # ---------------------------------------------------------------------------
 
 def _save_result(db: Session, ticket: RfpTicket, state: dict) -> None:
@@ -151,24 +178,211 @@ def process_ticket(ticket_id: int) -> None:
         _mark_failed(ticket_id, f"could not process ticket: {type(error).__name__}: {error}")
 
 
+# ---------------------------------------------------------------------------
+# Part 2: response generation, helpers
+# ---------------------------------------------------------------------------
+
+def _section_finished(section: DepartmentSection) -> bool:
+    return (section.evaluation_results or {}).get("section_status") in SECTION_DONE
+
+
+def _generation_running(ticket: RfpTicket, sections: list) -> bool:
+    """True while drafts are being written or evaluated.
+
+    "drafting" is always a run in progress. "under_evaluation" is either a run
+    in progress (some section is not finished) or a finished run where every
+    section passed and the ticket now waits for Part 3.
+    """
+    if ticket.status == STATUS_DRAFTING:
+        return True
+    return ticket.status == STATUS_UNDER_EVALUATION and any(
+        not _section_finished(s) for s in sections
+    )
+
+
+def _clear_generation(db: Session, ticket: RfpTicket, sections: list, message: str) -> None:
+    """Put a ticket back to intake_complete, throwing away unfinished drafts."""
+    for section in sections:
+        section.draft_content = None
+        section.evaluation_results = None
+        db.add(section)
+    ticket.status = STATUS_INTAKE_COMPLETE
+    ticket.error_message = message
+    ticket.updated_at = _now()
+    db.add(ticket)
+
+
+def _revert_generation(ticket_id: int, message: str) -> None:
+    try:
+        with Session(database.engine) as db:
+            ticket = db.get(RfpTicket, ticket_id)
+            if ticket is None:
+                return
+            sections = db.exec(
+                select(DepartmentSection).where(DepartmentSection.ticket_id == ticket_id)
+            ).all()
+            _clear_generation(db, ticket, sections, message)
+            db.commit()
+    except Exception as error:  # nothing left to try: at least say so in the log
+        print(f"RFP ticket {ticket_id}: could not undo a failed generation ({error})")
+
+
+def _load_handoff(db: Session, ticket: RfpTicket) -> tuple[dict, dict]:
+    """Part 1's handoff: the ticket's metadata and each department's key aspects
+    and open questions, read from the database. The PDF is not read."""
+    meta = db.exec(select(RfpMetadata).where(RfpMetadata.ticket_id == ticket.id)).first()
+    sections = db.exec(
+        select(DepartmentSection).where(DepartmentSection.ticket_id == ticket.id)
+    ).all()
+
+    metadata = {"rfp_id": ticket.rfp_id}
+    if meta is not None:
+        for field in ("client_name", "location", "service_type", "scope", "deadline", "budget_range"):
+            metadata[field] = getattr(meta, field)
+    inputs = {
+        s.department_id: {
+            "key_aspects": list(s.key_aspects or []),
+            "open_questions": list(s.open_questions or []),
+        }
+        for s in sections
+    }
+    return metadata, inputs
+
+
+def _record_progress(ticket_id: int, department_id: str, stage: str, iteration: int) -> None:
+    """Called by the pipeline as each department moves along. Makes the ticket
+    and the department's row show what is happening right now."""
+    if stage == "finished":
+        return  # the final save writes the finished section
+    with Session(database.engine) as db:
+        section = db.exec(
+            select(DepartmentSection).where(
+                DepartmentSection.ticket_id == ticket_id,
+                DepartmentSection.department_id == department_id,
+            )
+        ).first()
+        if section is not None:
+            section.evaluation_results = {
+                "section_status": "running", "stage": stage, "iteration": iteration,
+            }
+            db.add(section)
+        if stage == "evaluating":
+            ticket = db.get(RfpTicket, ticket_id)
+            if ticket is not None and ticket.status == STATUS_DRAFTING:
+                ticket.status = STATUS_UNDER_EVALUATION
+                ticket.updated_at = _now()
+                db.add(ticket)
+        db.commit()
+
+
+def _evaluation_payload(section: dict) -> dict:
+    """What is saved in a section's evaluation_results: the structured
+    EvaluationResult from the ticket (department_id, readability, relevance,
+    compliance, overall_pass, feedback_for_generator) plus how the loop went."""
+    payload = dict(section["evaluation_result"] or {})
+    payload.update({
+        "department_id": section["department_id"],
+        "section_status": section["status"],
+        "iterations": section["iterations"],
+        "history": section["history"],
+        "error": section["error"],
+    })
+    if section["evaluation_result"] is None:
+        payload["overall_pass"] = False  # a section with no evaluation did not pass
+    return payload
+
+
+def _save_generation(db: Session, ticket: RfpTicket, state: dict) -> None:
+    sections = {
+        s.department_id: s
+        for s in db.exec(
+            select(DepartmentSection).where(DepartmentSection.ticket_id == ticket.id)
+        ).all()
+    }
+    for department_id, result in state["results"].items():
+        row = sections.get(department_id)
+        if row is None:
+            continue
+        row.draft_content = result["draft_content"]
+        row.evaluation_results = _evaluation_payload(result)
+        db.add(row)
+    ticket.status = state["status"]
+    ticket.error_message = None
+    ticket.updated_at = _now()
+    db.add(ticket)
+
+
+def process_generation(ticket_id: int) -> None:
+    """Runs in the background after the generate request has been answered.
+
+    Reads Part 1's saved results, runs one generate / evaluate / revise loop
+    per department, and saves every draft with its EvaluationResult. A section
+    that never passed keeps its last draft and is marked needs_human_review.
+    """
+    try:
+        with Session(database.engine) as db:
+            ticket = db.get(RfpTicket, ticket_id)
+            if ticket is None:
+                return
+            metadata, inputs = _load_handoff(db, ticket)
+
+        state = run_response(
+            ticket_id, metadata, inputs,
+            on_progress=lambda department_id, stage, iteration: _record_progress(
+                ticket_id, department_id, stage, iteration),
+        )
+        if state["status"] == STATUS_FAILED:
+            _revert_generation(ticket_id, state.get("error") or "Draft generation failed.")
+            return
+
+        with Session(database.engine) as db:
+            ticket = db.get(RfpTicket, ticket_id)
+            _save_generation(db, ticket, state)
+            db.commit()
+    except Exception as error:
+        _revert_generation(ticket_id, f"Draft generation failed: {type(error).__name__}: {error}")
+
+
 def fail_interrupted_tickets() -> None:
     """Called once at server startup (main.py lifespan).
 
-    The pipeline runs inside this server process. If the server stopped
-    mid-run, those tickets would say "analyzing" forever. At startup nothing
-    is running yet, so any ticket still "analyzing" was interrupted.
+    Both pipelines run inside this server process. If the server stopped
+    mid-run, the tickets would keep saying "analyzing" or "drafting" forever.
+    At startup nothing is running yet, so:
+      - a ticket still "analyzing" was interrupted and becomes "failed"
+      - a ticket that is "drafting", or "under_evaluation" with an unfinished
+        section, had its drafts cut off. It goes back to "intake_complete"
+        with a message, so the drafts can be generated again.
+    A ticket whose sections are all finished is left alone: it is not running,
+    it is waiting.
     Does nothing when DATABASE_URL isn't set (same rule as init_inventory_db).
     """
     if database.engine is None:
         return
     try:
         with Session(database.engine) as db:
-            stuck = db.exec(select(RfpTicket).where(RfpTicket.status == STATUS_ANALYZING)).all()
-            for ticket in stuck:
+            analyzing = db.exec(select(RfpTicket).where(RfpTicket.status == STATUS_ANALYZING)).all()
+            for ticket in analyzing:
                 ticket.status = STATUS_FAILED
                 ticket.error_message = "Interrupted: the server restarted while this ticket was being analyzed."
                 ticket.updated_at = _now()
                 db.add(ticket)
+
+            in_progress = db.exec(
+                select(RfpTicket).where(
+                    RfpTicket.status.in_([STATUS_DRAFTING, STATUS_UNDER_EVALUATION])
+                )
+            ).all()
+            for ticket in in_progress:
+                sections = db.exec(
+                    select(DepartmentSection).where(DepartmentSection.ticket_id == ticket.id)
+                ).all()
+                if _generation_running(ticket, sections):
+                    _clear_generation(
+                        db, ticket, sections,
+                        "Interrupted: the server restarted while the drafts were being generated. "
+                        "You can generate them again.",
+                    )
             db.commit()
     except Exception as error:  # never stop the whole API from booting over this
         print(f"Could not check for interrupted RFP tickets: {error}")
@@ -208,10 +422,51 @@ async def upload_rfp(
     return {"ticket_id": ticket.id, "status": ticket.status}
 
 
+@router.post("/tickets/{ticket_id}/generate", status_code=202)
+def generate_drafts(
+    ticket_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _user=Depends(get_current_user),
+):
+    ticket = db.get(RfpTicket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found.")
+
+    sections = db.exec(
+        select(DepartmentSection).where(DepartmentSection.ticket_id == ticket_id)
+    ).all()
+    if _generation_running(ticket, sections):
+        raise HTTPException(status_code=409, detail="Drafts are already being generated for this ticket.")
+    if ticket.status not in CAN_GENERATE or not sections:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Drafts can only be generated for a ticket that finished intake (this one is '{ticket.status}').",
+        )
+
+    # Every department starts again from a clean "queued" row. From this moment
+    # the ticket counts as running, so a second request is refused.
+    for section in sections:
+        section.draft_content = None
+        section.evaluation_results = {"section_status": "running", "stage": "queued", "iteration": 0}
+        db.add(section)
+    ticket.status = STATUS_DRAFTING
+    ticket.error_message = None
+    ticket.updated_at = _now()
+    db.add(ticket)
+    db.commit()
+
+    background_tasks.add_task(process_generation, ticket_id)
+    return {"ticket_id": ticket_id, "status": STATUS_DRAFTING}
+
+
 @router.get("/tickets")
 def list_tickets(db: Session = Depends(get_db), _user=Depends(get_current_user)):
     tickets = db.exec(select(RfpTicket).order_by(RfpTicket.created_at.desc())).all()
     metadata = {m.ticket_id: m for m in db.exec(select(RfpMetadata)).all()}
+    sections_by_ticket = defaultdict(list)
+    for section in db.exec(select(DepartmentSection)).all():
+        sections_by_ticket[section.ticket_id].append(section)
     return [
         {
             "ticket_id": t.id,
@@ -219,6 +474,7 @@ def list_tickets(db: Session = Depends(get_db), _user=Depends(get_current_user))
             "original_filename": t.original_filename,
             "client_name": metadata[t.id].client_name if t.id in metadata else None,
             "departments_needed": metadata[t.id].departments_needed if t.id in metadata else [],
+            "generation_running": _generation_running(t, sections_by_ticket[t.id]),
             "created_at": t.created_at,
             "updated_at": t.updated_at,
         }
@@ -233,9 +489,11 @@ def get_ticket(ticket_id: int, db: Session = Depends(get_db), _user=Depends(get_
         raise HTTPException(status_code=404, detail="Ticket not found.")
 
     metadata = db.exec(select(RfpMetadata).where(RfpMetadata.ticket_id == ticket_id)).first()
-    sections = db.exec(
-        select(DepartmentSection).where(DepartmentSection.ticket_id == ticket_id)
-    ).all()
+    sections = sorted(
+        db.exec(select(DepartmentSection).where(DepartmentSection.ticket_id == ticket_id)).all(),
+        key=lambda s: s.id,
+    )
+    finished = [s.evaluation_results["iterations"] for s in sections if _section_finished(s)]
 
     return {
         "ticket_id": ticket.id,
@@ -248,13 +506,17 @@ def get_ticket(ticket_id: int, db: Session = Depends(get_db), _user=Depends(get_
         "updated_at": ticket.updated_at,
         "metadata": metadata.model_dump(exclude={"id", "ticket_id"}) if metadata else None,
         "sales_summary": ticket.sales_summary,
+        "generation_running": _generation_running(ticket, sections),
+        "average_iterations": round(sum(finished) / len(finished), 2) if finished else None,
         "sections": [
             {
                 "department_id": s.department_id,
                 "key_aspects": s.key_aspects,
                 "open_questions": s.open_questions,
                 "approval_status": s.approval_status,
+                "draft_content": s.draft_content,
+                "evaluation_results": s.evaluation_results,
             }
-            for s in sorted(sections, key=lambda s: s.id)
+            for s in sections
         ],
     }
