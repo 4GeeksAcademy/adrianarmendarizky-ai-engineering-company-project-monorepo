@@ -9,7 +9,15 @@
 
 import { authFetch } from "./api";
 
-export type TicketStatus = "analyzing" | "intake_complete" | "discarded" | "failed";
+// Part 1 statuses, then the Part 2 ones (drafting, under_evaluation, needs_human_review).
+export type TicketStatus =
+  | "analyzing"
+  | "intake_complete"
+  | "discarded"
+  | "failed"
+  | "drafting"
+  | "under_evaluation"
+  | "needs_human_review";
 
 export type TicketListItem = {
   ticket_id: number;
@@ -17,6 +25,7 @@ export type TicketListItem = {
   original_filename: string;
   client_name: string | null;
   departments_needed: string[];
+  generation_running: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -53,6 +62,40 @@ export type SalesSummary = {
   total_open_questions: number;
 };
 
+// What the evaluators found about one draft (the EvaluationResult from the
+// ticket), plus how the generate / evaluate loop went. While a department is
+// still working, only section_status, stage and iteration are filled in.
+export type RuleViolation = {
+  rule_id: string;
+  message: string;
+  evidence: string;
+};
+
+export type SectionEvaluation = {
+  section_status: "running" | "passed" | "needs_human_review";
+  // while running
+  stage?: string;
+  iteration?: number;
+  // once finished
+  department_id?: string;
+  iterations?: number;
+  overall_pass?: boolean;
+  readability?: { pass: boolean; score: number | null; details: string };
+  relevance?: { pass: boolean; missing_aspects: string[] };
+  compliance?: { pass: boolean; rule_ids: string[]; violations: RuleViolation[] };
+  feedback_for_generator?: string;
+  error?: string | null;
+};
+
+export type TicketSection = {
+  department_id: string;
+  key_aspects: string[];
+  open_questions: string[];
+  approval_status: string;
+  draft_content: string | null;
+  evaluation_results: SectionEvaluation | null;
+};
+
 export type TicketDetail = {
   ticket_id: number;
   status: TicketStatus;
@@ -64,6 +107,9 @@ export type TicketDetail = {
   updated_at: string;
   metadata: TicketMetadata | null;
   sales_summary: SalesSummary | null;
+  generation_running: boolean;
+  average_iterations: number | null;
+  sections: TicketSection[];
 };
 
 // Turns a failed response into a readable message. FastAPI puts the reason
@@ -82,6 +128,17 @@ export async function uploadRfp(
   // boundary value a file upload needs.
   const res = await authFetch("/rfp/tickets", { method: "POST", body: form });
   if (!res.ok) throw new Error(await failureMessage(res, "Could not upload the RFP"));
+  return res.json();
+}
+
+// Starts the draft proposal for a ticket that finished intake. The API answers
+// at once (202); the drafts are written in the background, and the ticket's
+// status and each department's row show the progress while the page polls.
+export async function generateDrafts(
+  ticketId: number
+): Promise<{ ticket_id: number; status: TicketStatus }> {
+  const res = await authFetch(`/rfp/tickets/${ticketId}/generate`, { method: "POST" });
+  if (!res.ok) throw new Error(await failureMessage(res, "Could not start the drafts"));
   return res.json();
 }
 
