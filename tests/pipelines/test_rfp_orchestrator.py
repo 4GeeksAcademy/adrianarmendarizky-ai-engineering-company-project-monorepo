@@ -160,3 +160,61 @@ def test_one_made_up_sentence_makes_the_whole_extract_fall_back(monkeypatch):
     marketing = orchestrator.orchestrate_rfp(BULLET_DOC)["assignments"]["marketing"]
     assert marketing["extract_is_verbatim"] is False
     assert marketing["extract"] == BULLET_DOC
+
+
+# --- training: a request for something NEW must reach the training department ----
+
+NEW_MENU_DOC = (
+    "Sunset Bay Resorts seeks a concession partner for 3 resorts in Florida. "
+    "Develop a co-branded signature menu item exclusive to Sunset Bay Resorts. "
+    "Proposals due Sep 2, 2026."
+)
+STANDARD_MENU_DOC = (
+    "Andes Tech Solutions wants weekly lunch for 220 people. "
+    "We would like the standard menu you already offer."
+)
+
+
+def test_a_quoted_request_for_something_new_adds_training_even_if_the_model_forgot_it(monkeypatch):
+    reply = full_reply(new_item_evidence="Develop a co-branded signature menu item exclusive to Sunset Bay Resorts.")
+    monkeypatch.setattr(llm, "call_generation_llm", fake_model(reply))
+    result = orchestrator.orchestrate_rfp(NEW_MENU_DOC)
+    assert result["departments_needed"] == ["marketing", "operaciones", "training"]
+    training = result["assignments"]["training"]
+    assert training["extract"] == "Develop a co-branded signature menu item exclusive to Sunset Bay Resorts."
+    assert training["extract_is_verbatim"] is True
+
+
+def test_a_made_up_quote_does_not_add_training(monkeypatch):
+    reply = full_reply(new_item_evidence="The resort wants a brand new recipe book.")
+    monkeypatch.setattr(llm, "call_generation_llm", fake_model(reply))
+    result = orchestrator.orchestrate_rfp(NEW_MENU_DOC)
+    assert "training" not in result["departments_needed"]
+
+
+def test_no_quote_means_no_training_for_a_standard_menu_request(monkeypatch):
+    monkeypatch.setattr(llm, "call_generation_llm", fake_model(full_reply(new_item_evidence=None)))
+    result = orchestrator.orchestrate_rfp(STANDARD_MENU_DOC)
+    assert "training" not in result["departments_needed"]
+
+
+def test_a_reply_without_the_new_field_still_works(monkeypatch):
+    # replies from before this change (and the other tests' fakes) have no new_item_evidence
+    monkeypatch.setattr(llm, "call_generation_llm", fake_model(full_reply()))
+    assert orchestrator.orchestrate_rfp(DOC)["departments_needed"] == ["marketing", "operaciones"]
+
+
+def test_training_the_model_already_chose_is_not_replaced_or_duplicated(monkeypatch):
+    reply = full_reply(new_item_evidence="Develop a co-branded signature menu item exclusive to Sunset Bay Resorts.")
+    reply["departments"]["training"] = {
+        "reason": "The model's own reason.", "extract": "Develop a co-branded signature menu item"}
+    monkeypatch.setattr(llm, "call_generation_llm", fake_model(reply))
+    result = orchestrator.orchestrate_rfp(NEW_MENU_DOC)
+    assert result["departments_needed"].count("training") == 1
+    assert result["assignments"]["training"]["reason"] == "The model's own reason."
+
+
+def test_the_prompt_asks_for_the_quote_before_the_departments():
+    prompt = orchestrator.SYSTEM_PROMPT
+    assert "new_item_evidence" in prompt
+    assert prompt.index('"new_item_evidence": null') < prompt.index('"departments": {')

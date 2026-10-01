@@ -11,9 +11,23 @@ guess: a wrong guess here could wrongly discard a real RFP.
 """
 
 import json
+import os
 import re
 
-from generation_client import call_generation_llm
+import generation_client
+
+# The model's hidden "thinking" is turned OFF for the RFP workflow. With it on,
+# one analysis call spent almost 6 minutes producing 32,000 characters of
+# thinking text before writing a 2,000-character answer; with it off the same
+# call took 19 seconds. Set RFP_MODEL_THINKING=on in .env to turn it back on.
+THINKING_OFF = os.environ.get("RFP_MODEL_THINKING", "off").strip().lower() != "on"
+NO_THINKING = {"reasoning": {"enabled": False}}
+
+
+def call_generation_llm(prompt: str, *, system: str | None = None) -> str:
+    """The one place every RFP agent asks the model. Tests replace THIS function."""
+    extra = NO_THINKING if THINKING_OFF else None
+    return generation_client.call_generation_llm(prompt, system=system, extra_body=extra)
 
 
 class LlmJsonError(ValueError):

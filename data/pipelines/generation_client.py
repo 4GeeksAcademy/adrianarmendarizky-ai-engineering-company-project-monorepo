@@ -23,7 +23,9 @@ _client = OpenAI(
 )
 
 
-def call_generation_llm(prompt: str, *, system: str | None = None) -> str:
+def call_generation_llm(
+    prompt: str, *, system: str | None = None, extra_body: dict | None = None
+) -> str:
     """Sends one prompt to the generation model and returns its text
     reply. Kept to this one call in, one string out shape so tests can
     monkeypatch it without knowing anything about the OpenAI SDK.
@@ -43,5 +45,8 @@ def call_generation_llm(prompt: str, *, system: str | None = None) -> str:
         model=GENERATION_MODEL_ID,
         messages=messages,
         temperature=0.2,  # low but not zero -- natural salesperson phrasing, not creative
+        # Extra request settings for the model service (the RFP workflow uses it to
+        # turn the model's hidden "thinking" off). None, the default, sends nothing extra.
+        extra_body=extra_body,
     )
     return response.choices[0].message.content

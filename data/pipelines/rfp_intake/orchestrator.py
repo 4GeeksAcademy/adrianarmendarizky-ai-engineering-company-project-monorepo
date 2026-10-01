@@ -46,7 +46,14 @@ often, contract length). Only include numbers that appear in the document.
 - deadline: the response deadline, copied exactly as written
 - budget_range: the budget or contract value, copied exactly as written
 
-Step 2 - Decide which departments apply. Use ONLY these ids:
+Step 2 - Look for a request for something NEW. Does the document ask Brasaland \
+to create, develop or design a new menu item, recipe, dish, signature item or \
+quality standard? Words like "signature menu item", "co-branded menu", "new \
+recipe", "custom menu" or "new standard" mean yes. If it does, copy the exact \
+words from the document into "new_item_evidence". If it only asks for the \
+standard menu Brasaland already has, use null.
+
+Step 3 - Decide which departments apply. Use ONLY these ids:
 - "marketing": brand terms, exclusivity, co-branding, offer validity. It owns \
 every ticket, so it ALWAYS applies.
 - "operaciones": can we deliver it? Kitchen and staff capacity, setup time, \
@@ -55,8 +62,9 @@ cost per event. Applies to any request that needs food to be prepared or served.
 whenever Brasaland will prepare or serve food for the request, because that \
 food has to be bought. That includes catering, concessions and events.
 - "training": ONLY when the request needs a NEW recipe, a new menu item, or a \
-new standard that staff must be certified on. Do NOT include it when the \
-request uses the standard menu.
+new standard that staff must be certified on. It applies whenever \
+"new_item_evidence" is not null. Do NOT include it when the request uses the \
+standard menu.
 
 For each department that applies give:
 - "reason": one plain sentence on why it applies
@@ -73,6 +81,7 @@ If the document mentions a department that is not one of the four ids above \
 Reply with JSON only, no other text:
 {"rfp_id": null, "client_name": null, "location": null, "service_type": null, \
 "scope": null, "deadline": null, "budget_range": null, \
+"new_item_evidence": null, \
 "departments": {"marketing": {"reason": "", "extract": ""}}, \
 "other_departments_mentioned": []}"""
 
@@ -142,6 +151,19 @@ def orchestrate_rfp(markdown: str, language: str = "en") -> dict:
             "reason": _clean(info.get("reason")) or "",
             "extract": extract if verbatim else doc,
             "extract_is_verbatim": verbatim,
+        }
+
+    # Training applies whenever the RFP asks for something NEW (CONTEXT section
+    # 2.1). The model has to quote the words that ask for it. If the quote really
+    # is in the document and the model still left training out, add it here: this
+    # is the one routing decision the model got wrong without its hidden thinking.
+    evidence = _clean(answer.get("new_item_evidence"))
+    if evidence and "training" not in assignments and _is_verbatim(evidence, doc):
+        assignments["training"] = {
+            "reason": "The RFP asks for something new (a menu item, recipe or standard) "
+                      "that staff must be trained and certified on.",
+            "extract": evidence,
+            "extract_is_verbatim": True,
         }
 
     # Marketing owns every ticket (CONTEXT section 2.1).
