@@ -28,6 +28,8 @@ from typing import Annotated, Any, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+import rfp_trace  # data/pipelines/rfp_trace.py: an optional trace of every node (the API switches it on)
+
 from rfp_intake.state import DEPARTMENT_IDS
 
 from . import settings
@@ -124,7 +126,7 @@ def run_response(ticket_id: int, metadata: dict, inputs: dict, on_progress=None)
 
     start = {"ticket_id": ticket_id, "metadata": metadata, "inputs": inputs, "progress": on_progress}
     try:
-        state = get_graph().invoke(start)
+        state = get_graph().invoke(start, config=rfp_trace.config())
     except Exception as error:  # last safety net: the graph itself blew up
         return {
             "ticket_id": ticket_id, "results": {}, "status": STATUS_FAILED,

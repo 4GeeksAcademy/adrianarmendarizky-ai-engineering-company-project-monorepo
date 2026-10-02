@@ -25,6 +25,8 @@ from functools import lru_cache
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+import rfp_trace  # data/pipelines/rfp_trace.py: an optional trace of every node (the API switches it on)
+
 from .classifier import classify_node
 from .convert import compute_readability, detect_language, pdf_to_markdown
 from .orchestrator import orchestrate_node
@@ -140,7 +142,7 @@ def run_intake(pdf_path, ticket_id=None) -> dict:
     if ticket_id is not None:
         start["ticket_id"] = ticket_id
     try:
-        state = get_graph().invoke(start)
+        state = get_graph().invoke(start, config=rfp_trace.config())
     except Exception as error:  # last safety net: the graph itself blew up
         state = {**start, "error": f"pipeline crashed: {type(error).__name__}: {error}"}
     state["status"] = final_status(state)
