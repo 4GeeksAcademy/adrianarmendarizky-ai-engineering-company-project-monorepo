@@ -9,7 +9,8 @@
 
 import { authFetch } from "./api";
 
-// Part 1 statuses, then the Part 2 ones (drafting, under_evaluation, needs_human_review).
+// Part 1 statuses, then the Part 2 ones (drafting, under_evaluation, needs_human_review),
+// then the Part 3 ones (waiting_for_approval, done).
 export type TicketStatus =
   | "analyzing"
   | "intake_complete"
@@ -17,7 +18,9 @@ export type TicketStatus =
   | "failed"
   | "drafting"
   | "under_evaluation"
-  | "needs_human_review";
+  | "needs_human_review"
+  | "waiting_for_approval"
+  | "done";
 
 export type TicketListItem = {
   ticket_id: number;
@@ -151,5 +154,195 @@ export async function listTickets(): Promise<TicketListItem[]> {
 export async function getTicket(ticketId: number): Promise<TicketDetail> {
   const res = await authFetch(`/rfp/tickets/${ticketId}`);
   if (!res.ok) throw new Error(await failureMessage(res, "Could not load that ticket"));
+  return res.json();
+}
+
+// --- Part 3: approvals (Milestone 9) -----------------------------------------------------
+//
+// Mirror what services/api/routes/rfp_approval.py sends back. "subject" is the
+// approver: a department id, or "ceo" when the estimated value is above $50,000 USD a year.
+
+export type ApprovalStatus = "pending" | "approved" | "rejected";
+export type ApprovalAction = "approve" | "reject" | "request_changes";
+
+export type ApprovalEvaluation = {
+  overall_pass?: boolean | null;
+  readability?: { pass: boolean | null; score: number | null };
+  relevance?: { pass: boolean | null; missing_aspects: string[] };
+  compliance?: {
+    pass: boolean | null;
+    rule_ids: string[];
+    violations: { rule_id?: string; message?: string; evidence?: string }[];
+  };
+};
+
+export type ApproverCard = {
+  key_aspects?: string[];
+  open_questions?: string[];
+  // only on the CEO's card
+  estimated_annual_value_usd?: { low: number; high: number } | null;
+  threshold_usd?: number;
+  approved_sections?: { department_id: string; approver: string | null; approved_at: string | null }[];
+};
+
+export type Approver = {
+  subject: string;
+  approver: string | null;
+  status: ApprovalStatus;
+  waiting: boolean; // true while this approver's answer is being waited for
+  acted_by: string | null;
+  comments: string;
+  estimates: Record<string, number>;
+  decided_at: string | null;
+  rejected_reason: string | null;
+  revision_count: number;
+  revisions_left: number;
+  draft_content: string;
+  evaluation: ApprovalEvaluation;
+  card: ApproverCard;
+};
+
+export type Conflict = {
+  trigger: string;
+  arbiter: string;
+  escalated_to: string | null;
+  sections: string[];
+  details: Record<string, unknown>;
+  resolution: string;
+  forced_action: string | null;
+};
+
+export type ArbitrationRequest = {
+  trigger: string;
+  arbiter: string;
+  choices: string[];
+  details: Record<string, unknown>;
+  sections: string[];
+};
+
+export type Approvals = {
+  ticket_id: number;
+  status: TicketStatus;
+  started: boolean;
+  approvers: Approver[];
+  arbitration: ArbitrationRequest | null;
+  conflicts: Conflict[];
+  warnings: string[];
+  revision_limit: number;
+  document_ready: boolean;
+  message: string | null;
+};
+
+export type ApprovalOutcome = {
+  outcome: string;
+  pending: string[];
+  waiting_for: string[];
+  rejected: string[];
+  blockers: string[];
+  document_ready: boolean;
+};
+
+export type ApprovalAnswer = { outcome: ApprovalOutcome; approvals: Approvals };
+
+export type DecisionBody = {
+  action: ApprovalAction;
+  comments?: string;
+  estimates?: Record<string, number>;
+};
+
+export type FinalDocument = {
+  ticket_id: number;
+  sections: {
+    department_id: string;
+    title: string;
+    content: string;
+    approver: string | null;
+    approved_at: string | null;
+  }[];
+  approvals: { subject: string; approver: string; acted_by: string | null; approved_at: string | null }[];
+  total_estimated_value: {
+    usd_low: number;
+    usd_high: number;
+    cop_low: number;
+    cop_high: number;
+    reference_rate_cop_per_usd: number;
+    note: string;
+  } | null;
+  generated_at: string;
+  markdown: string;
+};
+
+export type TraceEvent = {
+  id: number;
+  part: number;
+  agent: string;
+  event_type: string;
+  subject: string | null;
+  actor: string | null;
+  input: Record<string, unknown> | null;
+  output: Record<string, unknown> | null;
+  created_at: string;
+};
+
+// Sends a ticket that has drafts to the department owners. The API answers when
+// every approval is open (about a second), or after any forced rewrite.
+export async function sendForApproval(ticketId: number): Promise<ApprovalAnswer> {
+  const res = await authFetch(`/rfp/tickets/${ticketId}/send-for-approval`, { method: "POST" });
+  if (!res.ok) throw new Error(await failureMessage(res, "Could not send the ticket for approval"));
+  return res.json();
+}
+
+export async function getApprovals(ticketId: number): Promise<Approvals> {
+  const res = await authFetch(`/rfp/tickets/${ticketId}/approvals`);
+  if (!res.ok) throw new Error(await failureMessage(res, "Could not load the approvals"));
+  return res.json();
+}
+
+// One approver answers. Asking for changes rewrites the draft, which can take up to a minute.
+export async function recordDecision(
+  ticketId: number,
+  subject: string,
+  body: DecisionBody
+): Promise<ApprovalAnswer> {
+  const res = await authFetch(`/rfp/tickets/${ticketId}/approvals/${subject}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await failureMessage(res, "Could not record the decision"));
+  return res.json();
+}
+
+// Picks a rewrite up again after it was cut short (the model was unreachable).
+export async function continueRewrite(ticketId: number, subject: string): Promise<ApprovalAnswer> {
+  const res = await authFetch(`/rfp/tickets/${ticketId}/approvals/${subject}/continue`, { method: "POST" });
+  if (!res.ok) throw new Error(await failureMessage(res, "Could not continue the rewrite"));
+  return res.json();
+}
+
+// The named arbiter settles a cost-versus-feasibility conflict.
+export async function answerArbitration(
+  ticketId: number,
+  trigger: string,
+  body: { choice: string; comments: string }
+): Promise<ApprovalAnswer> {
+  const res = await authFetch(`/rfp/tickets/${ticketId}/arbitration/${trigger}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await failureMessage(res, "Could not record the arbitration"));
+  return res.json();
+}
+
+export async function getFinalDocument(ticketId: number): Promise<FinalDocument> {
+  const res = await authFetch(`/rfp/tickets/${ticketId}/final-document`);
+  if (!res.ok) throw new Error(await failureMessage(res, "Could not load the final document"));
+  return res.json();
+}
+
+export async function getTrace(ticketId: number): Promise<TraceEvent[]> {
+  const res = await authFetch(`/rfp/tickets/${ticketId}/trace`);
+  if (!res.ok) throw new Error(await failureMessage(res, "Could not load the trace"));
   return res.json();
 }
