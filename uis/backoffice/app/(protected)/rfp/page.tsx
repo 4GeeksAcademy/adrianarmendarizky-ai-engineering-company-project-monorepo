@@ -27,7 +27,7 @@ import {
   type TicketSection,
   type TicketStatus,
 } from "@/lib/rfp";
-import ApprovalPanel from "./ApprovalPanel";
+import ApprovalPanel, { RFP_CHANGED_EVENT } from "./ApprovalPanel";
 
 const STATUS_STYLE: Record<TicketStatus, string> = {
   analyzing: "bg-yellow-100 text-yellow-800",
@@ -421,6 +421,15 @@ export default function RfpPage() {
     const timer = setInterval(() => setReloadKey((k) => k + 1), 2000);
     return () => clearInterval(timer);
   }, [needsPolling]);
+
+  // The approvals panel announces when something it did changes the ticket (for example
+  // sending it for approval), so the badge and the list update at once, not only when the
+  // 2-second refresh happens to be running.
+  useEffect(() => {
+    const reload = () => setReloadKey((k) => k + 1);
+    window.addEventListener(RFP_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(RFP_CHANGED_EVENT, reload);
+  }, []);
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

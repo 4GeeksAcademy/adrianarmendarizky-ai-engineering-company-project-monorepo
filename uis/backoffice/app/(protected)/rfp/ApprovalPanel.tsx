@@ -66,12 +66,20 @@ const MIN_COMMENT_LENGTH = 10;
 
 const CAN_SEND: TicketStatus[] = ["under_evaluation", "needs_human_review"];
 
+// Announced on the window after anything this panel does that can change the ticket
+// (sending it for approval, an approval, a decision), so the page can reload at once.
+export const RFP_CHANGED_EVENT = "rfp-changed";
+
 function labelOf(subject: string): string {
   return DEPARTMENT_LABEL[subject] ?? subject;
 }
 
 function formatWhen(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString("en-US") : "";
+  if (!iso) return "";
+  // The server sends UTC times without a "Z" on the end. Add it, so the browser
+  // shows the time in the user's own time zone instead of reading it as local time.
+  const hasZone = /(Z|[+-]\d\d:?\d\d)$/.test(iso);
+  return new Date(hasZone ? iso : `${iso}Z`).toLocaleString("en-US");
 }
 
 function usd(value: number): string {
@@ -752,6 +760,7 @@ export default function ApprovalPanel({
     } finally {
       setBusy(null);
       setReloadKey((k) => k + 1); // show what the server really says now
+      window.dispatchEvent(new Event(RFP_CHANGED_EVENT)); // and tell the page, so its badge updates too
     }
   }
 
