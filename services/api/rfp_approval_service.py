@@ -25,7 +25,7 @@ from sqlmodel import Session, delete, select
 import database
 from rfp_models import (
     DepartmentSection, RfpApproval, RfpEvent, RfpFinalDocument, RfpTicket,
-    STATUS_DONE, STATUS_NEEDS_HUMAN_REVIEW, STATUS_WAITING_FOR_APPROVAL,
+    STATUS_DONE, STATUS_NEEDS_HUMAN_REVIEW, STATUS_UNDER_EVALUATION, STATUS_WAITING_FOR_APPROVAL,
 )
 from routes.rfp import _load_handoff  # Part 1's saved handoff (services/api/routes/rfp.py)
 from rfp_trace_store import store_event as _store_event  # the one place trace events are saved
@@ -203,6 +203,11 @@ def approvals_payload(db: Session, ticket: RfpTicket) -> dict:
     payload = {"ticket_id": ticket.id, "status": ticket.status, "started": False, "approvers": [],
                "arbitration": None, "conflicts": [], "warnings": [], "revision_limit": settings.REVISION_LIMIT,
                "document_ready": ticket.status == STATUS_DONE, "message": ticket.error_message}
+    # An earlier round of approvals only counts while it is running (waiting_for_approval), finished
+    # (done), or was just ended by a rejection (needs_human_review, with the reason). Once new drafts
+    # exist the old round is void, and the screen must not show it.
+    if ticket.status == STATUS_UNDER_EVALUATION or (ticket.status == STATUS_NEEDS_HUMAN_REVIEW and not ticket.error_message):
+        return payload
     try:
         view = get_system().describe(ticket.id)
     except UnknownTicket:

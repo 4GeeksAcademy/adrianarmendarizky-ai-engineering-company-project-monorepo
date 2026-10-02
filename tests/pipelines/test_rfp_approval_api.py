@@ -548,3 +548,73 @@ def test_a_trace_that_cannot_be_stored_never_stops_an_approval(client, engine, m
     other = add_ticket(engine, budget=None)
     assert send(client, other).status_code == 200
     assert approve(client, other, "marketing").status_code == 200
+
+
+# --- Part 3 feeding back into Part 2: a new round of drafts voids the old approvals ---------------------
+
+def _fake_generation(monkeypatch, departments):
+    """Part 2's pipeline replaced by a fake that writes brand-new drafts."""
+    results = {d: {"department_id": d, "status": "passed", "draft_content": f"## {d} NEW draft\n{CLEAN}",
+                   "iterations": 1, "history": [], "error": None, "evaluation_result": passed_evaluation(d)}
+               for d in departments}
+    monkeypatch.setattr(rfp_routes, "run_response", lambda ticket_id, metadata, inputs, on_progress=None: {
+        "status": "under_evaluation", "average_iterations": 1.0, "results": results, "error": None})
+
+
+def test_generating_again_after_a_rejection_voids_the_old_round_of_approvals(client, engine, monkeypatch):
+    tid = add_ticket(engine, departments=("marketing", "operaciones"), budget=None)
+    send(client, tid)
+    approve(client, tid, "marketing")
+    decide(client, tid, "operaciones", action="reject", comments="This section is not acceptable.")
+    assert ticket_of(engine, tid).status == "needs_human_review"
+    assert client.get(f"/rfp/tickets/{tid}/approvals").json()["started"] is True          # the ended round is still shown
+
+    _fake_generation(monkeypatch, ("marketing", "operaciones"))
+    assert client.post(f"/rfp/tickets/{tid}/generate").status_code == 202
+
+    assert ticket_of(engine, tid).status == "under_evaluation" and ticket_of(engine, tid).error_message is None
+    for department in ("marketing", "operaciones"):
+        section = section_of(engine, tid, department)
+        assert section.draft_content.startswith(f"## {department} NEW draft")
+        assert (section.approval_status, section.approver, section.approved_at) == ("pending", None, None)
+    body = client.get(f"/rfp/tickets/{tid}/approvals").json()
+    assert body["started"] is False and body["approvers"] == [] and body["message"] is None   # the old round is not shown
+
+
+def test_the_new_drafts_can_then_be_sent_for_approval_from_a_clean_start(client, engine, monkeypatch):
+    tid = add_ticket(engine, departments=("marketing", "operaciones"), budget=None)
+    send(client, tid)
+    approve(client, tid, "marketing")
+    decide(client, tid, "operaciones", action="reject", comments="This section is not acceptable.")
+    _fake_generation(monkeypatch, ("marketing", "operaciones"))
+    client.post(f"/rfp/tickets/{tid}/generate")
+
+    response = send(client, tid)
+
+    assert response.status_code == 200
+    approvers = approvers_of(response)
+    assert all(a["status"] == "pending" and a["waiting"] for a in approvers.values())    # nobody carries an old answer
+    assert all("NEW draft" in a["draft_content"] for a in approvers.values())            # the approvers see the NEW text
+    assert {r.status for r in approval_rows(engine, tid).values()} == {"pending"}
+    assert ticket_of(engine, tid).status == "waiting_for_approval"
+
+
+def test_drafts_that_ran_out_of_attempts_show_no_approvals_because_none_were_ever_opened(client, engine):
+    tid = add_ticket(engine, status="needs_human_review", budget=None)        # Part 2's own needs_human_review
+    body = client.get(f"/rfp/tickets/{tid}/approvals").json()
+    assert body["started"] is False and body["approvers"] == []
+
+
+def test_a_server_restart_leaves_tickets_that_wait_for_approval_or_are_done_alone(client, engine):
+    waiting = add_ticket(engine, budget=None)
+    send(client, waiting)
+    finished = add_ticket(engine, departments=("marketing",), budget=None)
+    send(client, finished)
+    approve(client, finished, "marketing")
+    assert ticket_of(engine, finished).status == "done"
+
+    rfp_routes.fail_interrupted_tickets()                                      # what main.py runs at startup
+
+    assert ticket_of(engine, waiting).status == "waiting_for_approval" and ticket_of(engine, waiting).error_message is None
+    assert ticket_of(engine, finished).status == "done" and ticket_of(engine, finished).error_message is None
+    assert approvers_now(client, waiting)["marketing"]["waiting"] is True        # and its approvals are still there

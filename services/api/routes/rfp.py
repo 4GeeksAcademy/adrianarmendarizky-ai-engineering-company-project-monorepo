@@ -453,6 +453,11 @@ def generate_drafts(
     for section in sections:
         section.draft_content = None
         section.evaluation_results = {"section_status": "running", "stage": "queued", "iteration": 0}
+        # A new round of drafts voids any earlier approvals (Part 3): the new text must not
+        # carry the old "approved by" or "rejected by". Sending it for approval starts afresh.
+        section.approval_status = "pending"
+        section.approver = None
+        section.approved_at = None
         db.add(section)
     ticket.status = STATUS_DRAFTING
     ticket.error_message = None
