@@ -116,7 +116,47 @@ class ApprovalSystem:
 
     def _event(self, ticket_id, agent, event_type, output, subject=None, actor=None):
         tracing.send(self.sink, tracing.make_event(agent, subject, {"ticket_id": ticket_id}, output,
-                                                   actor=actor, event_type=event_type))
+                                                   actor=actor, event_type=event_type, ticket_id=ticket_id))
+
+    def describe(self, ticket_id: int) -> dict:
+        """Everything a screen needs to show one ticket's approvals. Read-only:
+        it changes nothing and writes no trace events."""
+        snapshot = self.snapshot(ticket_id)
+        if not snapshot["sections"]:
+            raise UnknownTicket(f"No approval is open for ticket {ticket_id}.")
+        ceo_status = (snapshot["ceo"] or {}).get("status", settings.PENDING)
+        found = conflict_rules.detect_conflicts(snapshot["metadata"], snapshot["sections"], ceo_status)
+
+        paused = self.coordinator.get_state(self._config(ticket_id, COORDINATOR))
+        arbitration = None
+        if paused.values and paused.next == ("arbitrate",):
+            arbitration = paused.tasks[0].interrupts[0].value
+
+        approvers = []
+        for subject in [*DEPARTMENT_IDS, settings.CEO_SUBJECT]:
+            state = self.subject_state(ticket_id, subject)
+            if state is None:
+                continue
+            values = state["values"]
+            packet = values.get("packet") or {}
+            approvers.append({
+                "subject": subject,
+                "approver": values.get("approver"),
+                "status": values.get("status", settings.PENDING),
+                "waiting": state["waiting"],
+                "acted_by": values.get("acted_by"),
+                "comments": values.get("comments", ""),
+                "estimates": values.get("estimates") or {},
+                "decided_at": values.get("decided_at"),
+                "rejected_reason": values.get("rejected_reason"),
+                "revision_count": values.get("revision_count", 0),
+                "revisions_left": max(settings.REVISION_LIMIT - values.get("revision_count", 0), 0),
+                "draft_content": values.get("draft_content", ""),
+                "evaluation": values.get("evaluation", {}),
+                "card": packet.get("card") or values.get("card", {}),
+            })
+        return {"approvers": approvers, "arbitration": arbitration,
+                "conflicts": found["conflicts"], "warnings": found["warnings"]}
 
     # --- starting and finishing ----------------------------------------------
 

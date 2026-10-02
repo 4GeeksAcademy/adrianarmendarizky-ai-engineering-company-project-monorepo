@@ -32,8 +32,9 @@ def _short(value):
 
 
 def make_event(agent: str, subject, input_data: dict, output_data: dict, actor=None,
-               event_type: str = "node_finished") -> dict:
+               event_type: str = "node_finished", ticket_id=None) -> dict:
     return {
+        "ticket_id": ticket_id,
         "part": 3,
         "agent": agent,
         "event_type": event_type,
@@ -65,6 +66,7 @@ def traced(agent: str, sink=None, input_keys=()):
                 {key: state.get(key) for key in input_keys if key in state},
                 {key: value for key, value in update.items() if key != "trace"},
                 actor=update.get("acted_by") or state.get("acted_by"),
+                ticket_id=state.get("ticket_id"),
             )
             update["trace"] = [event]
             send(sink, event)

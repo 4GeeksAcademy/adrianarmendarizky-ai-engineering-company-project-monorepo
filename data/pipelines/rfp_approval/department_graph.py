@@ -80,7 +80,7 @@ def build_department_graph(checkpointer, reviser, sink=None):
             "human:await_decision", state["subject"],
             {"packet_revision": state["packet"]["revision_count"]},
             {"action": decision["action"], "comments": decision["comments"], "estimates": decision["estimates"]},
-            actor=update["acted_by"], event_type="human_decision")
+            actor=update["acted_by"], event_type="human_decision", ticket_id=state.get("ticket_id"))
         tracing.send(sink, event)
         update["trace"] = [event]
         return update

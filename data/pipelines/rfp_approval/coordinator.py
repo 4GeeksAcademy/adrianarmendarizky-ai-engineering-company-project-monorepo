@@ -114,7 +114,7 @@ def build_coordinator_graph(checkpointer, sink=None):
             "approval:arbitrate", state.get("subject"),
             {"conflicts": [c["trigger"] for c in state["conflicts"]]},
             {"resolutions": resolutions, "forced_changes": sorted(forced_changes)},
-            event_type="arbitration")
+            event_type="arbitration", ticket_id=state.get("ticket_id"))
         tracing.send(sink, event)
         update["trace"] = [event]
         return update

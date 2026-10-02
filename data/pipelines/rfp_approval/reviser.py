@@ -14,13 +14,13 @@ def summarize_evaluation(evaluation_result) -> dict:
     """The short version of an EvaluationResult that an approver is shown."""
     if not evaluation_result:
         return {}
-    compliance = evaluation_result.get("compliance", {})
+    readability = evaluation_result.get("readability") or {}
+    relevance = evaluation_result.get("relevance") or {}
+    compliance = evaluation_result.get("compliance") or {}
     return {
         "overall_pass": evaluation_result.get("overall_pass"),
-        "readability": {"pass": evaluation_result["readability"]["pass"],
-                        "score": evaluation_result["readability"]["score"]},
-        "relevance": {"pass": evaluation_result["relevance"]["pass"],
-                      "missing_aspects": evaluation_result["relevance"]["missing_aspects"]},
+        "readability": {"pass": readability.get("pass"), "score": readability.get("score")},
+        "relevance": {"pass": relevance.get("pass"), "missing_aspects": relevance.get("missing_aspects", [])},
         "compliance": {"pass": compliance.get("pass"), "rule_ids": compliance.get("rule_ids", []),
                        "violations": compliance.get("violations", [])},
     }

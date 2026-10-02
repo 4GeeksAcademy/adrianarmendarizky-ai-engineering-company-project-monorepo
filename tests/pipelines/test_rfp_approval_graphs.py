@@ -542,3 +542,55 @@ def test_an_arbiters_answer_is_refused_when_no_arbitration_is_waiting(build):
     with pytest.raises(NotWaiting, match="No arbitration is waiting"):
         system.answer_arbitration(
             1, "cost-vs-feasibility", {"choice": "raise_price", "comments": "Nothing to decide yet."}, "c@x.test")
+
+
+# --- the API needs: events that name their ticket, and a read-only description ---------------
+
+def test_every_event_says_which_ticket_it_belongs_to(build):
+    events = []
+    system = build(events=events)
+    system.open_ticket(7, SUNSET, drafts_for("marketing", "operaciones", operaciones="## Ops\n" + BAD))   # arbitration event
+    approve(system, 7, "marketing")                                                                      # human + node events
+    assert events and all(e["ticket_id"] == 7 for e in events)
+    assert {"arbitration", "human_decision", "ticket_outcome"} <= {e["event_type"] for e in events}
+
+
+def test_describe_shows_each_approver_the_conflicts_and_changes_nothing(build):
+    events = []
+    system = build(events=events)
+    system.open_ticket(1, SUNSET, drafts_for("marketing", "operaciones"))
+    approve(system, 1, "marketing", who="camila@brasaland.test")
+    seen = len(events)
+    before = system.snapshot(1)
+
+    view = system.describe(1)
+
+    assert len(events) == seen and system.snapshot(1) == before            # reading changed nothing and logged nothing
+    by_subject = {a["subject"]: a for a in view["approvers"]}
+    assert list(by_subject) == ["marketing", "operaciones"]
+    assert by_subject["marketing"]["status"] == "approved" and by_subject["marketing"]["acted_by"] == "camila@brasaland.test"
+    assert by_subject["operaciones"]["waiting"] is True and by_subject["operaciones"]["revisions_left"] == 2
+    assert by_subject["operaciones"]["draft_content"].startswith("## operaciones draft")
+    assert [c["trigger"] for c in view["conflicts"]] == ["ceo-threshold"]
+    assert view["arbitration"] is None
+
+
+def test_describe_shows_a_waiting_arbitration_and_the_ceo_when_asked(build):
+    system = build()
+    system.open_ticket(1, SUNSET, drafts_for("procurement", "operaciones"))
+    approve(system, 1, "procurement", ingredient_cost_per_cover_usd=12.0)
+    approve(system, 1, "operaciones", price_per_cover_usd=10.0)
+    view = system.describe(1)
+    assert view["arbitration"]["arbiter"] == "Camila Ospina"
+    assert "cost-vs-feasibility" in [c["trigger"] for c in view["conflicts"]]
+    with pytest.raises(UnknownTicket):
+        system.describe(99)
+
+
+def test_a_summary_of_a_result_with_no_readability_does_not_fail():
+    from rfp_approval.reviser import summarize_evaluation
+    crashed = {"department_id": "operaciones", "section_status": "needs_human_review", "overall_pass": False,
+               "iterations": 1, "history": [], "error": "model was down"}
+    summary = summarize_evaluation(crashed)
+    assert summary["overall_pass"] is False and summary["readability"] == {"pass": None, "score": None}
+    assert summarize_evaluation(None) == {}
