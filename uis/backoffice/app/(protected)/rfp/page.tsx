@@ -27,6 +27,7 @@ import {
   type TicketSection,
   type TicketStatus,
 } from "@/lib/rfp";
+import ApprovalPanel from "./ApprovalPanel";
 
 const STATUS_STYLE: Record<TicketStatus, string> = {
   analyzing: "bg-yellow-100 text-yellow-800",
@@ -36,6 +37,8 @@ const STATUS_STYLE: Record<TicketStatus, string> = {
   drafting: "bg-blue-100 text-blue-800",
   under_evaluation: "bg-indigo-100 text-indigo-800",
   needs_human_review: "bg-amber-100 text-amber-800",
+  waiting_for_approval: "bg-purple-100 text-purple-800",
+  done: "bg-emerald-100 text-emerald-800",
 };
 
 // A ticket can get drafts when it finished intake, or when a finished run
@@ -309,6 +312,12 @@ function TicketView({
         </div>
       )}
 
+      <ApprovalPanel
+        ticketId={ticket.ticket_id}
+        status={ticket.status}
+        generationRunning={ticket.generation_running}
+      />
+
       {(canGenerate || ticket.generation_running || hasDrafts) && (
         <div className="mt-8 border-t pt-4">
           <h3 className="font-semibold">Draft proposal</h3>
@@ -401,9 +410,12 @@ export default function RfpPage() {
     };
   }, [selectedId, reloadKey]);
 
-  // While a ticket is being analyzed, or its drafts are being written, ask for
-  // fresh data every 2 seconds. Stops on its own once nothing is running.
-  const needsPolling = tickets.some((t) => t.status === "analyzing" || t.generation_running);
+  // While a ticket is being analyzed, its drafts are being written, or it is waiting
+  // for approval, ask for fresh data every 2 seconds. Stops on its own once nothing
+  // is running or waiting.
+  const needsPolling = tickets.some(
+    (t) => t.status === "analyzing" || t.generation_running || t.status === "waiting_for_approval"
+  );
   useEffect(() => {
     if (!needsPolling) return;
     const timer = setInterval(() => setReloadKey((k) => k + 1), 2000);
