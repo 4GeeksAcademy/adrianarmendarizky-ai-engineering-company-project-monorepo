@@ -521,6 +521,7 @@ export function TraceView({ events }: { events: TraceEvent[] }) {
         return (
           <li key={event.id} className="rounded border bg-white p-1">
             <span className="text-gray-500">{formatWhen(event.created_at)}</span>{" "}
+            <span className="text-gray-500">Part {event.part} ·</span>{" "}
             <span className="font-medium">{event.agent}</span>
             {event.subject && <span> · {labelOf(event.subject)}</span>}
             {event.actor && <span> · by {event.actor}</span>}
@@ -687,7 +688,7 @@ export function ApprovalView({
 
       {status === "done" && <FinalDocumentBox ticketId={ticketId} />}
 
-      {approvals?.started && <TraceBox ticketId={ticketId} />}
+      <TraceBox ticketId={ticketId} />
     </section>
   );
 }
