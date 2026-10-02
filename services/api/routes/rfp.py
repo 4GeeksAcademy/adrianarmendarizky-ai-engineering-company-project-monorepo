@@ -68,6 +68,8 @@ sys.path.insert(0, str(REPO_ROOT / "data" / "pipelines"))
 
 from rfp_intake.graph import run_intake  # noqa: E402  (data/pipelines/rfp_intake/graph.py)
 from rfp_response.graph import run_response  # noqa: E402  (data/pipelines/rfp_response/graph.py)
+import rfp_trace  # noqa: E402  (data/pipelines/rfp_trace.py)
+from rfp_trace_store import store_event  # noqa: E402  (services/api/rfp_trace_store.py)
 
 UPLOAD_DIR = REPO_ROOT / "data" / "raw" / "rfp_uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -172,7 +174,8 @@ def process_ticket(ticket_id: int) -> None:
             ticket = db.get(RfpTicket, ticket_id)
             if ticket is None:
                 return
-            state = run_intake(_pdf_location(ticket.raw_pdf_path), ticket_id=ticket_id)
+            with rfp_trace.tracing(ticket_id, 1, "intake", store_event):
+                state = run_intake(_pdf_location(ticket.raw_pdf_path), ticket_id=ticket_id)
             _save_result(db, ticket, state)
     except Exception as error:
         _mark_failed(ticket_id, f"could not process ticket: {type(error).__name__}: {error}")
@@ -326,11 +329,12 @@ def process_generation(ticket_id: int) -> None:
                 return
             metadata, inputs = _load_handoff(db, ticket)
 
-        state = run_response(
-            ticket_id, metadata, inputs,
-            on_progress=lambda department_id, stage, iteration: _record_progress(
-                ticket_id, department_id, stage, iteration),
-        )
+        with rfp_trace.tracing(ticket_id, 2, "response", store_event) as tracer:
+            def progress(department_id, stage, iteration):
+                tracer.progress(department_id, stage, iteration)   # one trace event per draft round
+                _record_progress(ticket_id, department_id, stage, iteration)
+
+            state = run_response(ticket_id, metadata, inputs, on_progress=progress)
         if state["status"] == STATUS_FAILED:
             _revert_generation(ticket_id, state.get("error") or "Draft generation failed.")
             return

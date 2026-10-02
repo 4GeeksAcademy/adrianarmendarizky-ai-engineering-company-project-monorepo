@@ -28,6 +28,7 @@ from rfp_models import (
     STATUS_DONE, STATUS_NEEDS_HUMAN_REVIEW, STATUS_WAITING_FOR_APPROVAL,
 )
 from routes.rfp import _load_handoff  # Part 1's saved handoff (services/api/routes/rfp.py)
+from rfp_trace_store import store_event as _store_event  # the one place trace events are saved
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "data" / "pipelines"))
@@ -70,18 +71,7 @@ def _context_for(ticket_id: int, subject: str) -> dict:
             "open_questions": section.get("open_questions", [])}
 
 
-def _store_event(event: dict) -> None:
-    """The trace sink: one row in rfp_events per node execution or human action."""
-    if event.get("ticket_id") is None:
-        return
-    with Session(database.engine) as db:
-        db.add(RfpEvent(
-            ticket_id=event["ticket_id"], part=event["part"], agent=event["agent"],
-            event_type=event["event_type"], subject=event.get("subject"),
-            input_data=event.get("input"), output_data=event.get("output"),
-            actor=event.get("actor"), created_at=_parse(event["timestamp"]) or _now(),
-        ))
-        db.commit()
+# (trace events are saved by rfp_trace_store.py)
 
 
 def get_system() -> ApprovalSystem:
