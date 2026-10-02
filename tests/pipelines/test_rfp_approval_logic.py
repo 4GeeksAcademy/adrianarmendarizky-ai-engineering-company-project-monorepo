@@ -307,3 +307,21 @@ def test_a_missing_approval_row_counts_as_pending():
     with pytest.raises(final_document.NotReady) as error:
         final_document.build_final_document(7, {}, DRAFTS, {}, [], now=NOW)
     assert len(error.value.blockers) == 2 and all("pending" in b for b in error.value.blockers)
+
+
+# --- a validated decision can be validated again (the graph does it as a safety net) ---
+
+@pytest.mark.parametrize("subject, response", [
+    ("marketing", {"action": "approve"}),
+    ("marketing", {"action": "request_changes", "comments": "Please add the offer validity."}),
+    ("procurement", {"action": "approve", "estimates": {"ingredient_cost_per_cover_usd": 4.5}}),
+    ("ceo", {"action": "reject", "comments": "The margin is too thin for this client."}),
+])
+def test_validating_a_validated_decision_changes_nothing(subject, response):
+    once = decisions.validate_decision(subject, response)
+    assert decisions.validate_decision(subject, once) == once
+
+
+def test_estimates_that_are_not_an_object_are_still_refused():
+    with pytest.raises(decisions.InvalidDecision):
+        decisions.validate_decision("operaciones", {"action": "approve", "estimates": 0})

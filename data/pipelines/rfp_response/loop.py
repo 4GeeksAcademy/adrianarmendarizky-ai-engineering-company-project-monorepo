@@ -35,14 +35,20 @@ def _notify(on_progress, department_id: str, stage: str, iteration: int) -> None
 
 
 def run_section_loop(department_id: str, metadata: dict, key_aspects: list[str],
-                     open_questions: list[str], *, on_progress=None, limit: int | None = None) -> dict:
-    """Run one department's loop and return its finished section."""
+                     open_questions: list[str], *, on_progress=None, limit: int | None = None,
+                     previous_draft: str | None = None, feedback: str | None = None) -> dict:
+    """Run one department's loop and return its finished section.
+
+    previous_draft and feedback (Part 3): start from an EXISTING draft and some
+    feedback a person gave it, instead of from a blank page. The first draft
+    this writes is then a revision of that one. Both are left out for a normal
+    first run.
+    """
     limit = limit or settings.ITERATION_LIMIT
 
-    kept_draft = ""         # the last draft that has an EvaluationResult
+    kept_draft = previous_draft or ""   # the last draft that has an EvaluationResult
     kept_result = None      # that draft's EvaluationResult
     candidate = None        # the draft being worked on right now
-    feedback = None
     history = []
     attempts = 0
     error = None

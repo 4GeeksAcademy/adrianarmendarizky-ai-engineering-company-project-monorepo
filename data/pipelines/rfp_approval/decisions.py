@@ -78,7 +78,9 @@ def validate_decision(subject: str, response) -> dict:
         )
 
     estimates = {}
-    if response.get("estimates") is not None:
+    # An empty {} means "no estimates" (it is what this function itself returns), so
+    # validating an already-validated decision works. Anything else is checked.
+    if response.get("estimates") is not None and response["estimates"] != {}:
         if action != settings.APPROVE:
             raise InvalidDecision("Estimates can only be given together with 'approve'.")
         estimates = _clean_estimates(subject, response["estimates"])
