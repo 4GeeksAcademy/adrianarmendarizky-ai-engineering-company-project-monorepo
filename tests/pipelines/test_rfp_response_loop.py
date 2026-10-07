@@ -281,3 +281,20 @@ def test_final_status_rules():
     assert graph.final_status({"a": passed, "b": passed}) == "under_evaluation"
     assert graph.final_status({"a": passed, "b": review}) == "needs_human_review"
     assert graph.final_status({}) == "failed"
+
+
+# --- Part 3: start from an existing draft and a person's feedback ----------------
+
+def test_the_loop_can_start_from_an_existing_draft_and_a_persons_feedback(monkeypatch):
+    model = use(monkeypatch, ScriptedModel())
+    section = ops_loop(previous_draft="THE DRAFT THE APPROVER SAW", feedback="REVIEW by Felipe: add the staffing plan")
+    assert section["status"] == "passed" and section["iterations"] == 1
+    title, prompt, _ = model.generator_prompts[0]
+    assert "THE DRAFT THE APPROVER SAW" in prompt            # the first draft is already a revision
+    assert "REVIEW by Felipe: add the staffing plan" in prompt
+
+
+def test_a_normal_first_run_still_starts_from_a_blank_page(monkeypatch):
+    model = use(monkeypatch, ScriptedModel())
+    ops_loop()
+    assert "previous draft" not in model.generator_prompts[0][1]

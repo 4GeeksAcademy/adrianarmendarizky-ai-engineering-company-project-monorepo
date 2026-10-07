@@ -94,3 +94,70 @@ class DepartmentSection(SQLModel, table=True):
     approval_status: str = Field(default="pending")  # pending / approved / rejected
     approver: Optional[str] = None
     approved_at: Optional[datetime] = None
+
+
+# ---------------------------------------------------------------------------
+# Part 3: approvals, the trace, and the final document (Milestone 9)
+# ---------------------------------------------------------------------------
+# Three NEW tables. Nothing above this line changes: create_all() (database.py,
+# init_inventory_db) creates new tables and never alters existing ones.
+
+from sqlalchemy import UniqueConstraint  # noqa: E402
+
+# Part 3 statuses (CONTEXT-brasaland.md section 2.3)
+STATUS_WAITING_FOR_APPROVAL = "waiting_for_approval"
+STATUS_DONE = "done"
+
+
+class RfpApproval(SQLModel, table=True):
+    """One row per approver of one ticket: each department that applies, plus
+    the CEO when the estimated value is above $50,000 USD a year."""
+
+    __tablename__ = "rfp_approvals"
+    __table_args__ = (UniqueConstraint("ticket_id", "subject", name="one_approval_per_subject"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="rfp_tickets.id", index=True)
+    subject: str  # a department id, or "ceo"
+    status: str = Field(default="pending")  # pending / approved / rejected (CONTEXT 2.3)
+    approver: str  # the owner named in CONTEXT (who SHOULD approve)
+    acted_by: Optional[str] = None  # the logged-in user who actually clicked
+    comments: Optional[str] = Field(default=None, sa_column=Column(Text))
+    estimates: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    revision_count: int = 0  # how many times changes were requested (limit in the settings)
+    decided_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=_now)
+    updated_at: datetime = Field(default_factory=_now)
+
+
+class RfpEvent(SQLModel, table=True):
+    """Append-only log: every node execution and every human action, with the
+    agent, its input, its output and the time (the ticket's traceability rule).
+    The same rows are the audit trail of who approved what, and when."""
+
+    __tablename__ = "rfp_events"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="rfp_tickets.id", index=True)
+    part: int  # 1 = intake, 2 = response generation, 3 = approval
+    agent: str  # the node or agent that ran, or "human"
+    event_type: str
+    subject: Optional[str] = None  # department id, "ceo", or None for ticket-level events
+    input_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    output_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    actor: Optional[str] = None  # the user's email for human actions
+    created_at: datetime = Field(default_factory=_now, index=True)
+
+
+class RfpFinalDocument(SQLModel, table=True):
+    """The final proposal, stored once every approval is in (CONTEXT 2.3 FinalDocument)."""
+
+    __tablename__ = "rfp_final_documents"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="rfp_tickets.id", unique=True, index=True)
+    sections: list = Field(default_factory=list, sa_column=Column(JSON))
+    approvals: list = Field(default_factory=list, sa_column=Column(JSON))
+    total_estimated_value: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    markdown: str = Field(sa_column=Column(Text))
+    generated_at: datetime = Field(default_factory=_now)

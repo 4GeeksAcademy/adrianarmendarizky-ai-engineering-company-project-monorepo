@@ -10,3 +10,5 @@ workspace.tar.gz
 
 services/api/agent_checkpoints.db*
 data/raw/rfp_uploads/
+
+services/api/rfp_checkpoints.db*
