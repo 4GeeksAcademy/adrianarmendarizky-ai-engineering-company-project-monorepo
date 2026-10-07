@@ -48,6 +48,7 @@ from sqlmodel import Session, select
 import database
 from database import get_db
 from dependencies import get_current_user
+from sse_broker import broker
 from rfp_models import (
     DepartmentSection,
     RfpMetadata,
@@ -421,6 +422,7 @@ async def upload_rfp(
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
+    broker.publish({"ticket_id": ticket.id, "status": ticket.status, "original_filename": ticket.original_filename})
 
     background_tasks.add_task(process_ticket, ticket.id)
     return {"ticket_id": ticket.id, "status": ticket.status}
