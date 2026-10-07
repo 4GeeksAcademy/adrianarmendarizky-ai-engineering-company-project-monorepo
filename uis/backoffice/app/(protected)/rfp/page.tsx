@@ -511,7 +511,7 @@ export default function RfpPage() {
           className="mt-3 flex items-center justify-between rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-900"
         >
           <span>
-            New RFP ticket registered: <strong>#{notice.ticket_id}</strong> ({notice.original_filename}) - {notice.status}
+            New RFP ticket registered: <strong>#{notice.ticket_id}</strong>{notice.client_name ? ` - ${notice.client_name}` : ""}{notice.location ? ` (${notice.location})` : ""}{notice.service_type ? `, ${notice.service_type}` : ""} - {notice.status}
           </span>
           <button type="button" onClick={() => setNotice(null)} className="ml-3 underline">
             Dismiss
