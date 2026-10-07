@@ -28,6 +28,7 @@ import {
   type TicketStatus,
 } from "@/lib/rfp";
 import ApprovalPanel, { RFP_CHANGED_EVENT } from "./ApprovalPanel";
+import { subscribeToRfpTickets, type RfpTicketCreated, type StreamState } from "@/lib/rfpEvents";
 
 const STATUS_STYLE: Record<TicketStatus, string> = {
   analyzing: "bg-yellow-100 text-yellow-800",
@@ -431,6 +432,23 @@ export default function RfpPage() {
     return () => window.removeEventListener(RFP_CHANGED_EVENT, reload);
   }, []);
 
+  // Live notification when a new RFP ticket is registered (SSE, see lib/rfpEvents.ts).
+  // A new ticket shows the green notice and refreshes the list; after a dropped
+  // connection comes back, the list is refreshed too, in case anything was missed.
+  const [notice, setNotice] = useState<RfpTicketCreated | null>(null);
+  const [streamState, setStreamState] = useState<StreamState>("connecting");
+  useEffect(() => {
+    const stop = subscribeToRfpTickets({
+      onTicket: (ticket) => {
+        setNotice(ticket);
+        setReloadKey((k) => k + 1);
+      },
+      onState: setStreamState,
+      onReconnected: () => setReloadKey((k) => k + 1),
+    });
+    return stop;
+  }, []);
+
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!file) return;
@@ -487,6 +505,22 @@ export default function RfpPage() {
         </button>
       </form>
 
+      {notice && (
+        <div
+          role="status"
+          className="mt-3 flex items-center justify-between rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-900"
+        >
+          <span>
+            New RFP ticket registered: <strong>#{notice.ticket_id}</strong> ({notice.original_filename}) - {notice.status}
+          </span>
+          <button type="button" onClick={() => setNotice(null)} className="ml-3 underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+      {streamState === "reconnecting" && (
+        <p className="mt-3 text-sm text-amber-700">Live updates lost connection - trying to reconnect...</p>
+      )}
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
       <table className="mt-6 w-full text-left text-sm">
