@@ -9,17 +9,21 @@
 //
 // If the connection drops it tries again with a growing delay (1s, 2s, 4s ...
 // up to 30s). Two things keep the dashboard correct after a drop:
-//   1. It sends the id of the last ticket it saw in the Last-Event-ID header,
-//      and the server replays any newer tickets from the database.
+//   1. It sends the id of the last notification it saw in the Last-Event-ID header,
+//      and the server replays any newer ones from the database.
 //   2. It tells the page (onReconnected) so the page can reload the ticket list.
-// A ticket id that was already shown is never shown twice.
+// A notification that was already shown is never shown twice.
 
 import { authFetch } from "./api";
 
 export type RfpTicketCreated = {
   ticket_id: number;
+  rfp_id: string | null;
+  client_name: string | null;
+  location: string | null;
+  service_type: string | null;
   status: string;
-  original_filename: string;
+  created_at: string;
 };
 
 export type StreamState = "connecting" | "live" | "reconnecting";
@@ -58,6 +62,7 @@ export function subscribeToRfpTickets(handlers: Handlers): () => void {
   // Lines starting with ":" are keep-alive comments and are ignored.
   function handleMessage(block: string) {
     let eventName = "message";
+    let eventId: number | null = null;
     let data = "";
     for (const line of block.split("\n")) {
       if (line === "" || line.startsWith(":")) continue;
@@ -66,6 +71,10 @@ export function subscribeToRfpTickets(handlers: Handlers): () => void {
       const value = colon === -1 ? "" : line.slice(colon + 1).replace(/^ /, "");
       if (field === "event") eventName = value;
       if (field === "data") data += value;
+      if (field === "id") {
+        const number = Number(value);
+        if (Number.isInteger(number)) eventId = number;
+      }
     }
     if (eventName !== EVENT_NAME || data === "") return;
 
@@ -75,8 +84,10 @@ export function subscribeToRfpTickets(handlers: Handlers): () => void {
     } catch {
       return; // not valid JSON: ignore this message
     }
-    if (lastId !== null && ticket.ticket_id <= lastId) return; // already shown
-    lastId = ticket.ticket_id;
+    if (eventId !== null) {
+      if (lastId !== null && eventId <= lastId) return; // already shown
+      lastId = eventId;
+    }
     handlers.onTicket(ticket);
   }
 
