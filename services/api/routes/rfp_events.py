@@ -2,12 +2,17 @@
 routes/rfp_events.py -- live "new RFP ticket" notifications over SSE
 (Real-Time Systems, Part 1).
 
-  GET /rfp/events    a stream that stays open. Each time a ticket is
-                     registered the server sends:
+  GET /rfp/events    a stream that stays open. Each time a ticket is accepted
+                     as an RFP and starts being processed, the server sends:
 
-                         id: 42
+                         id: 87
                          event: rfp_ticket_created
-                         data: {"ticket_id": 42, "status": "analyzing", ...}
+                         data: {"ticket_id": 7, "rfp_id": "...", "client_name": "...",
+                                "location": "...", "service_type": "...",
+                                "status": "analyzing", "created_at": "..."}
+
+The "id" is the number of the saved trace event (see rfp_notify.py). It only
+ever goes up, in the order notifications were sent.
 
 Behind login (same get_current_user as the rest of the API). The browser
 must send the token in an Authorization header, so it uses fetch, not
@@ -15,8 +20,8 @@ the bare EventSource.
 
 If the connection drops, the browser reconnects and sends the id of the
 last event it saw in the Last-Event-ID header. The server then looks in
-the database for tickets newer than that id and sends them first, so
-nothing registered while the client was offline is lost.
+the database for notifications after that id and sends them first, so
+nothing sent while the client was offline is lost.
 
 No model or agent calls live here. This is only a communication layer.
 """
@@ -31,7 +36,8 @@ from sqlmodel import Session, select
 
 import database
 from dependencies import get_current_user
-from rfp_models import STATUS_ANALYZING, RfpTicket
+from rfp_models import RfpEvent
+from rfp_notify import NOTIFY_AGENT, NOTIFY_EVENT_TYPE, event_message
 from sse_broker import broker
 
 router = APIRouter(prefix="/rfp", tags=["rfp-events"])
@@ -41,33 +47,28 @@ KEEPALIVE_SECONDS = 15
 MAX_REPLAY = 100
 
 
-def _sse_message(data: dict) -> str:
+def _sse_message(message: dict) -> str:
     """One SSE message: id + named event + JSON data, ended by a blank line."""
-    return f"id: {data['ticket_id']}\nevent: {EVENT_NAME}\ndata: {json.dumps(data)}\n\n"
+    return f"id: {message['id']}\nevent: {EVENT_NAME}\ndata: {json.dumps(message['data'])}\n\n"
 
 
-def _missed_tickets(last_id: int) -> list[dict]:
-    """Tickets registered after last_id, oldest first (for a reconnecting client)."""
+def _missed_notifications(last_id: int) -> list[dict]:
+    """Notifications sent after last_id, oldest first (for a reconnecting client)."""
     with Session(database.engine) as db:
         rows = db.exec(
-            select(RfpTicket)
-            .where(RfpTicket.id > last_id)
-            .order_by(RfpTicket.id)
+            select(RfpEvent)
+            .where(RfpEvent.agent == NOTIFY_AGENT)
+            .where(RfpEvent.event_type == NOTIFY_EVENT_TYPE)
+            .where(RfpEvent.id > last_id)
+            .order_by(RfpEvent.id)
             .limit(MAX_REPLAY)
         ).all()
-        return [
-            {
-                "ticket_id": row.id,
-                "status": STATUS_ANALYZING,  # the status a ticket has when it is created
-                "original_filename": row.original_filename,
-            }
-            for row in rows
-        ]
+        return [event_message(db, row) for row in rows]
 
 
 async def _event_stream(request: Request, last_id: Optional[int]):
     # Sign up for live messages FIRST, then look for missed ones. This way a
-    # ticket registered during the lookup is not lost.
+    # notification sent during the lookup is not lost.
     queue = broker.subscribe()
     try:
         yield ": connected\n\n"  # sends the headers right away
@@ -75,9 +76,9 @@ async def _event_stream(request: Request, last_id: Optional[int]):
         sent_up_to = 0
         if last_id is not None:
             sent_up_to = last_id
-            for item in await asyncio.to_thread(_missed_tickets, last_id):
-                yield _sse_message(item)
-                sent_up_to = item["ticket_id"]
+            for message in await asyncio.to_thread(_missed_notifications, last_id):
+                yield _sse_message(message)
+                sent_up_to = message["id"]
 
         while True:
             if await request.is_disconnected():
@@ -87,9 +88,9 @@ async def _event_stream(request: Request, last_id: Optional[int]):
             except asyncio.TimeoutError:
                 yield ": keep-alive\n\n"  # a comment line: keeps the connection open
                 continue
-            if message["ticket_id"] <= sent_up_to:
-                continue  # already sent during the replay -- never show a ticket twice
-            sent_up_to = message["ticket_id"]
+            if message["id"] <= sent_up_to:
+                continue  # already sent during the replay -- never send one twice
+            sent_up_to = message["id"]
             yield _sse_message(message)
     finally:
         broker.unsubscribe(queue)

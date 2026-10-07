@@ -48,7 +48,6 @@ from sqlmodel import Session, select
 import database
 from database import get_db
 from dependencies import get_current_user
-from sse_broker import broker
 from rfp_models import (
     DepartmentSection,
     RfpMetadata,
@@ -71,6 +70,7 @@ from rfp_intake.graph import run_intake  # noqa: E402  (data/pipelines/rfp_intak
 from rfp_response.graph import run_response  # noqa: E402  (data/pipelines/rfp_response/graph.py)
 import rfp_trace  # noqa: E402  (data/pipelines/rfp_trace.py)
 from rfp_trace_store import store_event  # noqa: E402  (services/api/rfp_trace_store.py)
+from rfp_notify import store_and_notify  # noqa: E402  (services/api/rfp_notify.py)
 
 UPLOAD_DIR = REPO_ROOT / "data" / "raw" / "rfp_uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -175,7 +175,7 @@ def process_ticket(ticket_id: int) -> None:
             ticket = db.get(RfpTicket, ticket_id)
             if ticket is None:
                 return
-            with rfp_trace.tracing(ticket_id, 1, "intake", store_event):
+            with rfp_trace.tracing(ticket_id, 1, "intake", store_and_notify):
                 state = run_intake(_pdf_location(ticket.raw_pdf_path), ticket_id=ticket_id)
             _save_result(db, ticket, state)
     except Exception as error:
@@ -422,7 +422,6 @@ async def upload_rfp(
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
-    broker.publish({"ticket_id": ticket.id, "status": ticket.status, "original_filename": ticket.original_filename})
 
     background_tasks.add_task(process_ticket, ticket.id)
     return {"ticket_id": ticket.id, "status": ticket.status}
