@@ -50,3 +50,36 @@ def call_generation_llm(
         extra_body=extra_body,
     )
     return response.choices[0].message.content
+
+
+def stream_generation_llm(
+    prompt: str, *, system: str | None = None, extra_body: dict | None = None
+):
+    """Same request as call_generation_llm, but yields the reply a few words
+    at a time instead of returning it whole (Real-Time Systems, Part 2: the
+    WebSocket chat shows tokens as they are generated).
+
+    A generator: when the caller stops early (an interrupt), closing it also
+    closes the connection to the model, so no more tokens are produced."""
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    stream = _client.chat.completions.create(
+        model=GENERATION_MODEL_ID,
+        messages=messages,
+        temperature=0.2,
+        extra_body=extra_body,
+        stream=True,
+    )
+    try:
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            piece = chunk.choices[0].delta.content
+            if piece:
+                yield piece
+    finally:
+        close = getattr(stream, "close", None)
+        if close is not None:
+            close()
