@@ -56,7 +56,15 @@ load_dotenv(REPO_ROOT / "services" / "api" / ".env")
 from qdrant_client import QdrantClient  # noqa: E402
 
 from embeddings import embed  # noqa: E402
-from generation_client import call_generation_llm  # noqa: E402
+from generation_client import call_generation_llm, stream_generation_llm  # noqa: E402
+
+# Real-Time Systems Part 2: the model's hidden "thinking" is turned OFF for the streamed
+# WebSocket chat only. With it on, the first word came after about 9 seconds and the rest
+# arrived in big lumps; with it off the first word came after about 3 seconds and the text
+# trickled in steadily. Set CHAT_MODEL_THINKING=on in .env to turn it back on. The plain
+# (non-streaming) answer is not affected.
+CHAT_THINKING_OFF = os.environ.get("CHAT_MODEL_THINKING", "off").strip().lower() != "on"
+CHAT_NO_THINKING = {"reasoning": {"enabled": False}}
 
 QDRANT_COLLECTION = "brasaland_knowledge"  # must match data/process/rag.py
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
@@ -145,7 +153,9 @@ def retrieve(query: str, *, k: int = DEFAULT_K, min_score: float = DEFAULT_MIN_S
     return [{**hit.payload, "score": hit.score} for hit in response.points if hit.score >= min_score]
 
 
-def generate_answer(question: str, context: list[dict], memory_notes: list[str] | None = None) -> str:
+def generate_answer(
+    question: str, context: list[dict], memory_notes: list[str] | None = None, on_token=None
+) -> str:
     """The only function that calls the generation LLM. Builds a prompt
     from the retrieved chunks and asks the model to answer the way a
     trained Brasaland salesperson would -- confidently, using only the
@@ -193,7 +203,23 @@ Context:
 Question: {question}
 
 Answer:"""
-    return call_generation_llm(prompt, system=SYSTEM_PROMPT)
+    if on_token is None:
+        return call_generation_llm(prompt, system=SYSTEM_PROMPT)
+    # Real-Time Systems Part 2: the WebSocket chat passes on_token to get the reply piece
+    # by piece. Same prompt, same system message; only how the reply arrives differs.
+    # If on_token raises (an interrupt), the model stream is closed right away.
+    pieces = []
+    stream = stream_generation_llm(
+        prompt, system=SYSTEM_PROMPT,
+        extra_body=CHAT_NO_THINKING if CHAT_THINKING_OFF else None,
+    )
+    try:
+        for piece in stream:
+            on_token(piece)
+            pieces.append(piece)
+    finally:
+        stream.close()
+    return "".join(pieces)
 
 
 def query(question: str) -> str:

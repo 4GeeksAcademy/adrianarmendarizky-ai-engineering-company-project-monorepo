@@ -41,6 +41,7 @@ from rag import retrieve, generate_answer, NO_INFO_MESSAGE  # noqa: E402
 from . import mcp_client
 from .guardrails import patterns as guard_patterns
 from .guardrails import telemetry as guard_telemetry
+from langgraph.config import get_config, get_stream_writer
 from .state import AgentState
 
 # --- Question understanding (shared between routing and the tool nodes) --
@@ -216,6 +217,20 @@ def _format_inventory_answer(matches: list[dict]) -> str:
     return " ".join(lines)
 
 
+def _token_writer():
+    """Real-Time Systems Part 2: the WebSocket chat starts the graph with
+    configurable stream_tokens=True and reads LangGraph's "custom" stream.
+    Returns a function that sends one piece of the answer to that stream, or
+    None for every other caller (POST /agent/query, tests), which is how the
+    node behaves exactly as before when nobody is streaming."""
+    try:
+        if get_config().get("configurable", {}).get("stream_tokens"):
+            return get_stream_writer()
+    except RuntimeError:  # called outside a graph run
+        pass
+    return None
+
+
 def generate_node(state: AgentState) -> dict:
     """The fan-in node: assembles the final answer from whichever
     sources route_question actually invoked, however many ran. A ticket
@@ -225,17 +240,26 @@ def generate_node(state: AgentState) -> dict:
     there's real context to reason over. If nothing this run tried
     produced anything at all, the answer is NO_INFO_MESSAGE -- the same
     fixed string Part 1 used, reused here rather than duplicated."""
+    write = _token_writer()
     parts = []
 
     if state.get("ticket_info"):
         parts.append(_format_ticket_answer(state["ticket_info"]))
+        if write:
+            write({"token": parts[-1] + "\n\n"})
     elif state.get("ticket_error"):
         parts.append(state["ticket_error"])
+        if write:
+            write({"token": parts[-1] + "\n\n"})
 
     if state.get("inventory_matches"):
         parts.append(_format_inventory_answer(state["inventory_matches"]))
+        if write:
+            write({"token": parts[-1] + "\n\n"})
     elif state.get("inventory_error"):
         parts.append(state["inventory_error"])
+        if write:
+            write({"token": parts[-1] + "\n\n"})
 
     # Saved manager notes (agent/memory_nodes.py) are added to the RAG answer.
     # If the question matched no documents and no tool answered it, the notes
@@ -259,9 +283,17 @@ def generate_node(state: AgentState) -> dict:
         for excerpt in flagged_notes:
             guard_telemetry.log_event("security", "poisoned_memory_note", excerpt=excerpt)
     if context or (memory_notes and not parts):
-        parts.append(generate_answer(state["question"], context, memory_notes or None))
+        if write:
+            parts.append(generate_answer(
+                state["question"], context, memory_notes or None,
+                on_token=lambda piece: write({"token": piece}),
+            ))
+        else:  # not streaming: the exact call this node always made
+            parts.append(generate_answer(state["question"], context, memory_notes or None))
 
     if not parts:
         parts.append(NO_INFO_MESSAGE)
+        if write:
+            write({"token": NO_INFO_MESSAGE})
 
     return {"answer": "\n\n".join(parts)}

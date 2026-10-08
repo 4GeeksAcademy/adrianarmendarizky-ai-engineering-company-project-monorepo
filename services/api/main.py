@@ -36,6 +36,7 @@ from routes.reporting import router as reporting_router
 from routes.rfp import router as rfp_router, fail_interrupted_tickets
 from routes.rfp_approval import router as rfp_approval_router
 from routes.rfp_events import router as rfp_events_router
+from routes.chat_ws import router as chat_ws_router
 from routes.suppliers import router as suppliers_router
 from routes.tasks import router as tasks_router
 from routes.telemetry import router as telemetry_router
@@ -99,6 +100,7 @@ app.include_router(agent_router)
 app.include_router(rfp_router)
 app.include_router(rfp_approval_router)
 app.include_router(rfp_events_router)
+app.include_router(chat_ws_router)
 
 
 @app.get("/")

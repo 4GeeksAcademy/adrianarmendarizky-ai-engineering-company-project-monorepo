@@ -39,6 +39,9 @@ export default function BackofficeLayout({
               <Link href="/knowledge-base" className="hover:text-white">
                 Knowledge Base
               </Link>
+              <Link href="/support-chat" className="hover:text-white">
+                Support Chat
+              </Link>
               <Link href="/rfp" className="hover:text-white">
                 RFP Intake
               </Link>
