@@ -1,7 +1,7 @@
 FROM debian:bookworm-slim
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssh-server iptables iproute2 \
+ && apt-get install -y --no-install-recommends openssh-server iptables iproute2 netcat-openbsd \
  && rm -rf /var/lib/apt/lists/*
 
 # A dedicated non-root user for day-to-day work. It has no password,
@@ -24,6 +24,7 @@ RUN chown deploy:deploy /srv/brasaland/app /var/log/brasaland \
 
 COPY sshd_config.hardened /etc/ssh/sshd_config
 COPY check_ssh_config.sh /usr/local/bin/check_ssh_config.sh
+COPY firewall.sh /usr/local/bin/firewall.sh
 
 EXPOSE 22
 CMD ["/usr/sbin/sshd", "-D", "-e"]
