@@ -1,0 +1,8 @@
+uis/backoffice/app/login/page.tsx:8:import { safeReturnTo } from "@/lib/returnTo";
+uis/backoffice/app/login/page.tsx:39:      const safeTarget = safeReturnTo(returnTo, window.location.href);
+uis/backoffice/app/login/page.tsx:40:      if (safeTarget) {
+uis/backoffice/app/login/page.tsx:48:        window.location.href = `${safeTarget}#token=${encodeURIComponent(token)}`;
+uis/backoffice/app/register/page.tsx:8:import { safeReturnTo } from "@/lib/returnTo";
+uis/backoffice/app/register/page.tsx:67:      const safeTarget = safeReturnTo(returnTo, window.location.href);
+uis/backoffice/app/register/page.tsx:68:      if (safeTarget) {
+uis/backoffice/app/register/page.tsx:69:        window.location.href = `${safeTarget}#token=${encodeURIComponent(token)}`;

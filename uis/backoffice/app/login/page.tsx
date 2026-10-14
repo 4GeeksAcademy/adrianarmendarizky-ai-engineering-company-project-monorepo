@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { login } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import { safeReturnTo } from "@/lib/returnTo";
 
 // useSearchParams() requires a Suspense boundary around whatever uses
 // it, or Next.js can't statically prerender the rest of the page --
@@ -35,7 +36,8 @@ function LoginForm() {
       const token = await login(email, password);
       setToken(token);
 
-      if (returnTo) {
+      const safeTarget = safeReturnTo(returnTo, window.location.href);
+      if (safeTarget) {
         // We were sent here by a different app (Incidents, Talent
         // Pipeline Tracker) that has no login of its own. Hand the
         // token back via a URL fragment rather than a query param --
@@ -43,7 +45,7 @@ function LoginForm() {
         // in any access log or Referer header, only in the receiving
         // app's own JS. This is a full page navigation (not
         // router.push) because returnTo is a different origin.
-        window.location.href = `${returnTo}#token=${encodeURIComponent(token)}`;
+        window.location.href = `${safeTarget}#token=${encodeURIComponent(token)}`;
         return;
       }
 
