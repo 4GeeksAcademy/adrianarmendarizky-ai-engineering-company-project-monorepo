@@ -1,0 +1,12 @@
+PASS  PermitRootLogin = no
+PASS  PasswordAuthentication = no
+PASS  PubkeyAuthentication = yes
+PASS  X11Forwarding = no
+PASS  MaxAuthTries = 3
+PASS  AllowUsers is set
+---
+maxauthtries 3
+permitrootlogin no
+passwordauthentication no
+x11forwarding no
+allowusers deploy

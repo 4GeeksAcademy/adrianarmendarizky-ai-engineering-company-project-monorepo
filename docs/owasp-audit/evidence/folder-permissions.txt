@@ -1,0 +1,10 @@
+drwxr-x--- 1 root   deploy 4096 Oct 14 20:33 /etc/brasaland
+-rw-r----- 1 root   deploy   34 Oct 14 20:33 /etc/brasaland/api.env
+drwxr-x--- 1 deploy deploy 4096 Oct 14 20:33 /srv/brasaland/app
+drwxr-x--- 1 deploy deploy 4096 Oct 14 20:33 /var/log/brasaland
+---
+touch: cannot touch '/etc/brasaland/test.txt': Permission denied
+deploy writes config folder, exit: 1
+EXAMPLE_SETTING=not-a-real-secret
+app-write-ok
+root L 2026-10-05 0 99999 7 -1
