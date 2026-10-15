@@ -1,0 +1,22 @@
+.FF..                                                                    [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert 404 == 401
+     +  where 404 = <Response [404 Not Found]>.status_code
+     +    where <Response [404 Not Found]> = get('/inventory/products/1')
+     +      where get = <starlette.testclient.TestClient object at 0x7cbf49ef8550>.get
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_inventory_access.py:40: AssertionError: assert 404 == 401
+E   AssertionError: assert 200 == 401
+     +  where 200 = <Response [200 OK]>.status_code
+     +    where <Response [200 OK]> = get('/inventory/orders')
+     +      where get = <starlette.testclient.TestClient object at 0x7cbf49efbb10>.get
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_inventory_access.py:44: AssertionError: assert 200 == 401
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292
+  /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292: UserWarning: Failed to obtain server version. Unable to check client-server compatibility. Set check_compatibility=False to skip version check.
+    show_warning(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_inventory_access.py::test_no_login_cannot_read_one_product
+FAILED tests/test_inventory_access.py::test_no_login_cannot_list_orders - Ass...
+2 failed, 3 passed, 1 warning in 1.86s
