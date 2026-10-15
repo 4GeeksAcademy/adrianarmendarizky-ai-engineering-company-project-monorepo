@@ -26,12 +26,14 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # directory from inside services/api.
 sys.path.insert(0, str(REPO_ROOT / "data" / "pipelines"))
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from dependencies import get_current_user
 
 from rag import query as rag_query  # noqa: E402  (data/pipelines/rag.py)
 
-router = APIRouter(prefix="/knowledge", tags=["knowledge"])
+router = APIRouter(prefix="/knowledge", tags=["knowledge"], dependencies=[Depends(get_current_user)])
 
 
 class KnowledgeQueryRequest(BaseModel):
