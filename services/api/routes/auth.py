@@ -34,17 +34,28 @@ from user_models import (
     User,
 )
 
+import rate_limit
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    wait = rate_limit.login_blocked(form_data.username)
+    if wait is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many failed logins. Try again in {wait} seconds.",
+            headers={"Retry-After": str(wait)},
+        )
     user = svc.get_user_by_email(form_data.username)
     if user is None or not verify_password(form_data.password, user.hashed_password):
         # Same error either way -- confirming "no such email" vs. "wrong
         # password" would tell an attacker which emails are registered.
+        rate_limit.record_login_failure(form_data.username)
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
+    rate_limit.clear_login_failures(form_data.username)
     access_token = create_access_token(user_id=user.id)
     return Token(access_token=access_token)
 

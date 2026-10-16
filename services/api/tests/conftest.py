@@ -114,3 +114,12 @@ def register_and_login(client):
         }
 
     return _make
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    """Clear rate limit counts so one test never affects the next."""
+    import rate_limit
+    rate_limit.reset()
+    yield
+    rate_limit.reset()

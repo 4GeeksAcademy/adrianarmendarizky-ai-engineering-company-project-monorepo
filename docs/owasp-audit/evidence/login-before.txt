@@ -1,0 +1,25 @@
+F..F                                                                     [100%]
+=================================== FAILURES ===================================
+E   assert 200 == 429
+     +  where 200 = <Response [200 OK]>.status_code
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_login_limit.py:23: assert 200 == 429
+E   AssertionError: assert 401 == 429
+     +  where 401 = <Response [401 Unauthorized]>.status_code
+     +    where <Response [401 Unauthorized]> = _login(<starlette.testclient.TestClient object at 0x72831ab19480>, 'nobody@example.com', 'whatever123')
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_login_limit.py:45: AssertionError: assert 401 == 429
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292
+  /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292: UserWarning: Failed to obtain server version. Unable to check client-server compatibility. Set check_compatibility=False to skip version check.
+    show_warning(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_login_limit.py::test_five_wrong_passwords_lock_the_account_for_a_while
+FAILED tests/test_login_limit.py::test_an_unknown_email_is_limited_too - Asse...
+2 failed, 2 passed, 1 warning in 7.09s
