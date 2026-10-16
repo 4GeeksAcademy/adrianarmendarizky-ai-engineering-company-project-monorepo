@@ -59,6 +59,7 @@ from agent.memory import policy
 from agent.memory.store import get_store
 from dependencies import get_current_user
 from user_models import Role, User
+import rate_limit
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 logger = logging.getLogger(__name__)
@@ -109,6 +110,14 @@ def post_agent_query(
     session_id = body.session_id or uuid.uuid4().hex
     if not _SESSION_ID_RE.fullmatch(session_id):
         raise HTTPException(status_code=422, detail="session_id must be 8-64 letters, digits, - or _")
+
+    wait = rate_limit.check_rate_limit(str(current_user.id))
+    if wait is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many requests. Try again in {wait} seconds.",
+            headers={"Retry-After": str(wait)},
+        )
 
     thread_id = str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}

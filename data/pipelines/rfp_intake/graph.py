@@ -29,6 +29,7 @@ import rfp_trace  # data/pipelines/rfp_trace.py: an optional trace of every node
 
 from .classifier import classify_node
 from .convert import compute_readability, detect_language, pdf_to_markdown
+from .injection_scan import find_injection
 from .orchestrator import orchestrate_node
 from .state import RfpIntakeState
 from .synthesizer import synthesize_node
@@ -64,6 +65,18 @@ def convert_node(state: dict) -> dict:
     }
 
 
+def scan_node(state: dict) -> dict:
+    """Stops the intake if the document contains a known jailbreak phrase.
+    No model has seen the text yet at this point."""
+    found = find_injection(state["markdown"])
+    if found is None:
+        return {}
+    return {
+        "is_rfp": False,
+        "discard_reason": f"Possible prompt injection: the document contains text like '{found}'. A person should review it before it is processed.",
+    }
+
+
 def worker_node(payload: dict) -> dict:
     """Runs ONE department's worker. It receives only the shared metadata
     and that department's extract, never the whole state."""
@@ -78,7 +91,13 @@ def worker_node(payload: dict) -> dict:
 # --- routing -----------------------------------------------------------
 
 def after_convert(state: dict):
-    return END if state.get("error") else "classify"
+    return END if state.get("error") else "scan"
+
+
+def after_scan(state: dict):
+    if state.get("error") or state.get("is_rfp") is False:
+        return END  # flagged (or crashed): no classifier, no workers, no model calls
+    return "classify"
 
 
 def after_classify(state: dict):
@@ -106,6 +125,7 @@ def fan_out(state: dict):
 def build_graph():
     builder = StateGraph(RfpIntakeState)
     builder.add_node("convert", safe("convert", convert_node))
+    builder.add_node("scan", safe("scan", scan_node))
     builder.add_node("classify", safe("classify", classify_node))
     builder.add_node("orchestrate", safe("orchestrate", orchestrate_node))
     builder.add_node("worker", worker_node)
@@ -113,6 +133,7 @@ def build_graph():
 
     builder.add_edge(START, "convert")
     builder.add_conditional_edges("convert", after_convert)
+    builder.add_conditional_edges("scan", after_scan)
     builder.add_conditional_edges("classify", after_classify)
     builder.add_conditional_edges("orchestrate", fan_out)
     builder.add_edge("worker", "synthesize")  # waits for every worker

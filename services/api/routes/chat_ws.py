@@ -31,6 +31,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError
 
 import chat_service
+import rate_limit
 import user_service as svc
 from security import decode_access_token
 from user_models import Role
@@ -116,6 +117,10 @@ async def chat_socket(
                 continue
 
             if event == "user_message":
+                wait = rate_limit.check_rate_limit(str(user.id))
+                if wait is not None:
+                    await _send_error(websocket, f"Too many requests. Try again in {wait} seconds.")
+                    continue
                 text = str(data.get("text", ""))
                 started = await asyncio.to_thread(
                     chat_service.start_turn, session_id, text, user.id, is_memory_user
@@ -125,6 +130,10 @@ async def chat_socket(
                         websocket, "Nothing to send, or the agent is still answering. Interrupt it first."
                     )
             elif event == "interrupt_requested":
+                wait = rate_limit.check_rate_limit(str(user.id))
+                if wait is not None:
+                    await _send_error(websocket, f"Too many requests. Try again in {wait} seconds.")
+                    continue
                 new_input = str(data.get("new_input", ""))
                 stopped = await asyncio.to_thread(
                     chat_service.request_interrupt, session_id, new_input, user.id, is_memory_user

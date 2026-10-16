@@ -109,9 +109,9 @@ def test_the_intake_graph_traces_every_step_in_order(monkeypatch):
 
     assert state["status"] == "intake_complete"
     agents = sink.agents()
-    assert agents[:3] == ["intake:convert", "intake:classify", "intake:orchestrate"]
-    assert sorted(agents[3:5]) == ["intake:worker", "intake:worker"]
-    assert agents[5] == "intake:synthesize" and len(agents) == 6
+    assert agents[:4] == ["intake:convert", "intake:scan", "intake:classify", "intake:orchestrate"]
+    assert sorted(agents[4:6]) == ["intake:worker", "intake:worker"]
+    assert agents[6] == "intake:synthesize" and len(agents) == 7
     workers = [e for e in sink.events if e["agent"] == "intake:worker"]
     assert sorted(e["subject"] for e in workers) == ["marketing", "operaciones"]
     for event in sink.events:
@@ -125,7 +125,7 @@ def test_a_discarded_document_is_traced_only_as_far_as_the_classifier(monkeypatc
     with rfp_trace.tracing(7, 1, "intake", sink):
         state = intake_graph.run_intake("fake.pdf", ticket_id=7)
     assert state["status"] == "discarded"
-    assert sink.agents() == ["intake:convert", "intake:classify"]
+    assert sink.agents() == ["intake:convert", "intake:scan", "intake:classify"]
 
 
 # --- switching it on and off ---------------------------------------------------------------------
