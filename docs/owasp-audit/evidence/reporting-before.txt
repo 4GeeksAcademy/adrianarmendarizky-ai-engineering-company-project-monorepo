@@ -1,0 +1,55 @@
+FFFFF..                                                                  [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert 200 == 401
+     +  where 200 = <Response [200 OK]>.status_code
+     +    where <Response [200 OK]> = get('/reporting/weekly-location-performance')
+     +      where get = <starlette.testclient.TestClient object at 0x78ffc04f7e00>.get
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_reporting_access.py:69: AssertionError: assert 200 == 401
+E   AssertionError: assert 200 == 401
+     +  where 200 = <Response [200 OK]>.status_code
+     +    where <Response [200 OK]> = get('/reporting/pipeline-runs/latest')
+     +      where get = <starlette.testclient.TestClient object at 0x78ffc0424550>.get
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_reporting_access.py:73: AssertionError: assert 200 == 401
+E   AssertionError: assert 202 == 401
+     +  where 202 = <Response [202 Accepted]>.status_code
+     +    where <Response [202 Accepted]> = post('/reporting/pipeline-runs')
+     +      where post = <starlette.testclient.TestClient object at 0x78ffc04256d0>.post
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_reporting_access.py:77: AssertionError: assert 202 == 401
+E   AssertionError: assert 200 == 401
+     +  where 200 = <Response [200 OK]>.status_code
+     +    where <Response [200 OK]> = get('/tasks/abc')
+     +      where get = <starlette.testclient.TestClient object at 0x78ffc03b9220>.get
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_reporting_access.py:82: AssertionError: assert 200 == 401
+E   AssertionError: assert 200 == 401
+     +  where 200 = <Response [200 OK]>.status_code
+     +    where <Response [200 OK]> = get('/telemetry/report')
+     +      where get = <starlette.testclient.TestClient object at 0x78ffc03bb820>.get
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_reporting_access.py:86: AssertionError: assert 200 == 401
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292
+  /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292: UserWarning: Failed to obtain server version. Unable to check client-server compatibility. Set check_compatibility=False to skip version check.
+    show_warning(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_reporting_access.py::test_no_login_cannot_read_the_weekly_report
+FAILED tests/test_reporting_access.py::test_no_login_cannot_read_the_latest_pipeline_run
+FAILED tests/test_reporting_access.py::test_no_login_cannot_start_a_pipeline_run
+FAILED tests/test_reporting_access.py::test_no_login_cannot_read_task_status
+FAILED tests/test_reporting_access.py::test_no_login_cannot_read_the_telemetry_report
+5 failed, 2 passed, 1 warning in 2.54s

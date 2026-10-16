@@ -48,6 +48,7 @@ from sqlmodel import Session
 
 import telemetry_analysis
 from database import get_db
+from dependencies import get_current_user
 from telemetry_models import TelemetryEventRecord
 from telemetry_schemas import TelemetryEvent
 
@@ -144,7 +145,7 @@ async def receive_events(request: Request, db: Session = Depends(get_db)):
     return {"received": received, "stored": stored, "rejected": rejected}
 
 
-@router.get("/report")
+@router.get("/report", dependencies=[Depends(get_current_user)])
 def get_report(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,

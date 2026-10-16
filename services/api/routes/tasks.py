@@ -9,11 +9,12 @@ need a second version of this route.
 """
 
 from celery.result import AsyncResult
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from celery_app import celery_app
+from dependencies import get_current_user
 
-router = APIRouter(prefix="/tasks", tags=["tasks"])
+router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(get_current_user)])
 
 # Celery's own states, lowercased to match this API's existing
 # status-column convention (see job_runs_models.py / reporting_models.py):
