@@ -1,0 +1,25 @@
+Downloading pygments (1.2MiB)
+Downloading pip (1.7MiB)
+ Downloaded pygments
+ Downloaded pip
+Installed 28 packages in 53ms
+WARNING:pip_audit._dependency_source.pip:pip-audit will run pip against /home/codespace/.cache/uv/archive-v0/SVdX5bklg-A4C_mK/bin/python, but you have a virtual environment loaded at /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/.venv. This may result in unintuitive audits, since your local environment will not be audited. You can forcefully override this behavior by setting PIPAPI_PYTHON_LOCATION to the location of your virtual environment's Python interpreter.
+Found 12 known vulnerabilities in 6 packages
+Name        Version ID                  Fix Versions
+----------- ------- ------------------- ------------
+ecdsa       0.19.2  PYSEC-2026-1325
+ecdsa       0.19.2  PYSEC-2026-1325
+nltk        3.10.3  PYSEC-2026-3740
+oauthlib    3.3.1   PYSEC-2026-4114     4.0.0
+oauthlib    3.3.1   PYSEC-2026-4114     4.0.0
+python-jose 3.5.0   PYSEC-2026-4298
+tornado     6.5.8   GHSA-chx6-46f5-w4vp 6.5.9
+tornado     6.5.8   GHSA-c2m8-h5v5-343r 6.5.9
+tornado     6.5.8   GHSA-3hv7-mjh2-fv65 6.5.9
+urllib3     2.7.0   PYSEC-2026-4177     2.8.0
+urllib3     2.7.0   PYSEC-2026-4176     2.8.0
+urllib3     2.7.0   PYSEC-2026-4175     2.8.0
+
+Name                   Skip Reason
+---------------------- -------------------------------------------------------------------------------------
+brasaland-supplier-api Dependency not found on PyPI and could not be audited: brasaland-supplier-api (0.1.0)

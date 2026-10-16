@@ -1,0 +1,6 @@
+FAIL  PermitRootLogin = yes  (want no)
+FAIL  PasswordAuthentication = (not set)  (want no)
+FAIL  PubkeyAuthentication = (not set)  (want yes)
+FAIL  X11Forwarding = yes  (want no)
+FAIL  MaxAuthTries = (not set)  (want 3)
+FAIL  AllowUsers is not set (want a named list of users)

@@ -40,3 +40,43 @@ def reset() -> None:
     """Forget all counts. Used by tests."""
     with _lock:
         _hits.clear()
+        _failures.clear()
+
+
+# --- Failed-login limit (OWASP A07) -----------------------------------------
+# After LOGIN_MAX_FAILURES wrong passwords for the same email within
+# LOGIN_WINDOW_SECONDS, login is refused until the window passes. Unknown
+# emails are counted too, so the answer never reveals which emails exist.
+LOGIN_MAX_FAILURES = int(os.environ.get("LOGIN_MAX_FAILURES", "5"))
+LOGIN_WINDOW_SECONDS = int(os.environ.get("LOGIN_WINDOW_SECONDS", "900"))
+
+_failures: dict[str, deque] = defaultdict(deque)
+
+
+def _login_key(email: str) -> str:
+    return email.strip().lower()
+
+
+def login_blocked(email: str) -> int | None:
+    """Seconds the caller must wait, or None if login is allowed."""
+    now = time.monotonic()
+    key = _login_key(email)
+    with _lock:
+        fails = _failures[key]
+        while fails and now - fails[0] >= LOGIN_WINDOW_SECONDS:
+            fails.popleft()
+        if len(fails) >= LOGIN_MAX_FAILURES:
+            return max(1, int(LOGIN_WINDOW_SECONDS - (now - fails[0])) + 1)
+        if not fails:
+            _failures.pop(key, None)
+        return None
+
+
+def record_login_failure(email: str) -> None:
+    with _lock:
+        _failures[_login_key(email)].append(time.monotonic())
+
+
+def clear_login_failures(email: str) -> None:
+    with _lock:
+        _failures.pop(_login_key(email), None)

@@ -14,6 +14,7 @@ from tinydb import Query as TinyDBQuery
 
 from database import suppliers_table
 from dependencies import get_current_user
+from user_models import Role, User
 from supplier_models import (
     Category,
     Country,
@@ -30,6 +31,14 @@ router = APIRouter(prefix="/suppliers", tags=["suppliers"], dependencies=[Depend
 # A reusable "query builder" for TinyDB -- SupplierField.country == "USA"
 # is how TinyDB expresses "find documents where country equals USA".
 SupplierField = TinyDBQuery()
+
+
+def require_manager_or_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Changing or removing a supplier needs a manager or an admin.
+    Any logged-in user can still read suppliers."""
+    if current_user.role not in (Role.MANAGER, Role.ADMIN):
+        raise HTTPException(status_code=403, detail="Only managers and admins can change suppliers")
+    return current_user
 
 
 def _doc_to_supplier(doc) -> Supplier:
@@ -103,7 +112,7 @@ def get_supplier(supplier_id: int):
 # PATCH /suppliers/{id}/rate -- update the rate, stamp updated_at
 # ---------------------------------------------------------------------------
 
-@router.patch("/{supplier_id}/rate", response_model=Supplier)
+@router.patch("/{supplier_id}/rate", response_model=Supplier, dependencies=[Depends(require_manager_or_admin)])
 def update_rate(supplier_id: int, payload: SupplierRateUpdate):
     _get_doc_or_404(supplier_id)
     suppliers_table.update(
@@ -123,7 +132,7 @@ def update_rate(supplier_id: int, payload: SupplierRateUpdate):
 # accepts the SupplierStatus enum.
 # ---------------------------------------------------------------------------
 
-@router.patch("/{supplier_id}/status", response_model=Supplier)
+@router.patch("/{supplier_id}/status", response_model=Supplier, dependencies=[Depends(require_manager_or_admin)])
 def update_status(supplier_id: int, payload: SupplierStatusUpdate):
     _get_doc_or_404(supplier_id)
     suppliers_table.update(
@@ -138,7 +147,7 @@ def update_status(supplier_id: int, payload: SupplierStatusUpdate):
 # (per the brief: suppliers are suspended, not deleted, in normal use)
 # ---------------------------------------------------------------------------
 
-@router.delete("/{supplier_id}")
+@router.delete("/{supplier_id}", dependencies=[Depends(require_manager_or_admin)])
 def delete_supplier(supplier_id: int):
     _get_doc_or_404(supplier_id)
     suppliers_table.remove(doc_ids=[supplier_id])

@@ -1,0 +1,28 @@
+.FF..                                                                    [100%]
+=================================== FAILURES ===================================
+E   assert 200 == 413
+     +  where 200 = <Response [200 OK]>.status_code
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+----------------------------- Captured stdout call -----------------------------
+[telemetry] received 101, stored 101, rejected 0
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_telemetry_limits.py:45: assert 200 == 413
+E   assert 200 == 413
+     +  where 200 = <Response [200 OK]>.status_code
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+----------------------------- Captured stdout call -----------------------------
+[telemetry] received 1, stored 1, rejected 0
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_telemetry_limits.py:51: assert 200 == 413
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292
+  /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292: UserWarning: Failed to obtain server version. Unable to check client-server compatibility. Set check_compatibility=False to skip version check.
+    show_warning(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_telemetry_limits.py::test_too_many_events_in_one_request_is_refused
+FAILED tests/test_telemetry_limits.py::test_a_huge_request_body_is_refused - ...
+2 failed, 3 passed, 1 warning in 1.19s

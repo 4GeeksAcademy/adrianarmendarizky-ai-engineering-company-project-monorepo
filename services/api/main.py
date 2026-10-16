@@ -68,16 +68,34 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Lets the frontend (a different port, in Codespaces or localhost) call
-# this API during local development. allow_origin_regex covers Codespaces'
-# *.app.github.dev preview URLs specifically -- carried over from the old
-# incidents app, which needed it to fix a real CORS bug.
+# Only these websites may call the API from a browser (OWASP A05).
+# Allowed: the local frontends (ports 3000-3002), this Codespace's own
+# sibling ports, and anything listed in CORS_ALLOWED_ORIGINS (comma
+# separated, for production). Other sites and other people's Codespaces
+# are refused.
+import os
+
+_FRONTEND_PORTS = (3000, 3001, 3002)
+_allowed_origins = [
+    f"http://{host}:{port}"
+    for host in ("localhost", "127.0.0.1")
+    for port in _FRONTEND_PORTS
+]
+_codespace = os.environ.get("CODESPACE_NAME")
+_codespace_domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN")
+if _codespace and _codespace_domain:
+    _allowed_origins += [
+        f"https://{_codespace}-{port}.{_codespace_domain}" for port in _FRONTEND_PORTS
+    ]
+_allowed_origins += [
+    o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=r"https://.*\.app\.github\.dev",
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed_origins,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(users_router)

@@ -1,0 +1,31 @@
+FFF.....                                                                 [100%]
+=================================== FAILURES ===================================
+E   assert 200 == 403
+     +  where 200 = <Response [200 OK]>.status_code
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_supplier_access.py:33: assert 200 == 403
+E   assert 200 == 403
+     +  where 200 = <Response [200 OK]>.status_code
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_supplier_access.py:40: assert 200 == 403
+E   assert 200 == 403
+     +  where 200 = <Response [200 OK]>.status_code
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_supplier_access.py:47: assert 200 == 403
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292
+  /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292: UserWarning: Failed to obtain server version. Unable to check client-server compatibility. Set check_compatibility=False to skip version check.
+    show_warning(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_supplier_access.py::test_a_plain_user_cannot_suspend_a_supplier
+FAILED tests/test_supplier_access.py::test_a_plain_user_cannot_delete_a_supplier
+FAILED tests/test_supplier_access.py::test_a_plain_user_cannot_change_a_suppliers_rate
+3 failed, 5 passed, 1 warning in 5.91s

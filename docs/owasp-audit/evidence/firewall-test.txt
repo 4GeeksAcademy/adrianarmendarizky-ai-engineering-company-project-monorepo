@@ -1,0 +1,14 @@
+server ip: 172.17.0.2
+== BEFORE firewall ==
+port 22: OPEN
+port 443: OPEN
+port 6379: OPEN
+port 6333: OPEN
+port 5555: OPEN
+(firewall applied)
+== AFTER firewall ==
+port 22: OPEN
+port 443: OPEN
+port 6379: BLOCKED
+port 6333: BLOCKED
+port 5555: BLOCKED

@@ -1,0 +1,4 @@
+uis/backoffice/app/login/page.tsx:38:      if (returnTo) {
+uis/backoffice/app/login/page.tsx:46:        window.location.href = `${returnTo}#token=${encodeURIComponent(token)}`;
+uis/backoffice/app/register/page.tsx:66:      if (returnTo) {
+uis/backoffice/app/register/page.tsx:67:        window.location.href = `${returnTo}#token=${encodeURIComponent(token)}`;

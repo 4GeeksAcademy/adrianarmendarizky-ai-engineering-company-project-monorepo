@@ -42,12 +42,13 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import ValidationError
 from sqlmodel import Session
 
 import telemetry_analysis
 from database import get_db
+from dependencies import get_current_user
 from telemetry_models import TelemetryEventRecord
 from telemetry_schemas import TelemetryEvent
 
@@ -59,6 +60,11 @@ router = APIRouter(prefix="/telemetry", tags=["telemetry"])
 TELEMETRY_ENDPOINT = os.getenv("TELEMETRY_ENDPOINT")
 
 REPORT_CACHE_TTL_SECONDS = 60
+
+# Limits on POST /events, which is open to unauthenticated senders.
+# The frontend sends batches of 20 (uis/backoffice/lib/telemetry.ts).
+MAX_EVENTS_PER_REQUEST = 100
+MAX_BODY_BYTES = 256 * 1024
 # Keyed by the exact (start_date, end_date) ISO strings requested --
 # two different windows are two different cache entries, on purpose,
 # not one global "the report" slot. A module-level dict is enough for
@@ -92,6 +98,8 @@ def _parse_query_datetime(raw: str) -> datetime:
 @router.post("/events")
 async def receive_events(request: Request, db: Session = Depends(get_db)):
     raw_body = await request.body()
+    if len(raw_body) > MAX_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="Request body too large")
     try:
         parsed = json.loads(raw_body)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -99,6 +107,8 @@ async def receive_events(request: Request, db: Session = Depends(get_db)):
 
     raw_events = parsed.get("events", []) if isinstance(parsed, dict) else []
     received = len(raw_events)
+    if received > MAX_EVENTS_PER_REQUEST:
+        raise HTTPException(status_code=413, detail="Too many events in one request")
 
     records: list[TelemetryEventRecord] = []
     rejected = 0
@@ -144,7 +154,7 @@ async def receive_events(request: Request, db: Session = Depends(get_db)):
     return {"received": received, "stored": stored, "rejected": rejected}
 
 
-@router.get("/report")
+@router.get("/report", dependencies=[Depends(get_current_user)])
 def get_report(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,

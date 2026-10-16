@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { login, registerUser } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import { safeReturnTo } from "@/lib/returnTo";
 
 type FieldErrors = { email?: string; password?: string };
 
@@ -63,8 +64,9 @@ function RegisterForm() {
       const token = await login(email, password);
       setToken(token);
 
-      if (returnTo) {
-        window.location.href = `${returnTo}#token=${encodeURIComponent(token)}`;
+      const safeTarget = safeReturnTo(returnTo, window.location.href);
+      if (safeTarget) {
+        window.location.href = `${safeTarget}#token=${encodeURIComponent(token)}`;
         return;
       }
 

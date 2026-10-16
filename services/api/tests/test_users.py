@@ -121,6 +121,9 @@ def test_delete_user_happy_path(client, register_and_login):
     # test_token.py::test_token_for_deleted_user), so it can't be used to
     # verify the deletion itself.
     other = register_and_login(email="witness@example.com")
+    # Deleting someone else's account needs an admin (access-control fix).
+    import user_service
+    user_service.users_table.update({"role": "admin"}, doc_ids=[other["user_id"]])
 
     resp = client.delete(f"/users/{to_delete['user_id']}", headers=other["headers"])
 

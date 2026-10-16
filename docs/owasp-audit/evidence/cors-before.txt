@@ -1,0 +1,28 @@
+FF..                                                                     [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert '*' is None
+     +  where '*' = get('access-control-allow-origin')
+     +    where get = Headers({'access-control-allow-origin': '*', 'access-control-allow-methods': 'DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT', 'access-control-max-age': '600', 'content-length': '2', 'content-type': 'text/plain; charset=utf-8'}).get
+     +      where Headers({'access-control-allow-origin': '*', 'access-control-allow-methods': 'DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT', 'access-control-max-age': '600', 'content-length': '2', 'content-type': 'text/plain; charset=utf-8'}) = <Response [200 OK]>.headers
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_cors.py:13: AssertionError: assert '*' is None
+E   AssertionError: assert '*' is None
+     +  where '*' = get('access-control-allow-origin')
+     +    where get = Headers({'access-control-allow-origin': '*', 'access-control-allow-methods': 'DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT', 'access-control-max-age': '600', 'content-length': '2', 'content-type': 'text/plain; charset=utf-8'}).get
+     +      where Headers({'access-control-allow-origin': '*', 'access-control-allow-methods': 'DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT', 'access-control-max-age': '600', 'content-length': '2', 'content-type': 'text/plain; charset=utf-8'}) = <Response [200 OK]>.headers
+---------------------------- Captured stdout setup -----------------------------
+Seeded 15 suppliers into the database.
+No TinyDB users found yet -- skipping inventory seed. Register a user (POST /users) and restart the app to seed.
+/workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/tests/test_cors.py:18: AssertionError: assert '*' is None
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292
+  /workspaces/adrianarmendarizky-ai-engineering-company-project-monorepo/services/api/.venv/lib/python3.13/site-packages/qdrant_client/qdrant_remote.py:292: UserWarning: Failed to obtain server version. Unable to check client-server compatibility. Set check_compatibility=False to skip version check.
+    show_warning(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_cors.py::test_an_outside_website_is_not_allowed - Assertion...
+FAILED tests/test_cors.py::test_someone_elses_codespace_is_not_allowed - Asse...
+2 failed, 2 passed, 1 warning in 1.25s

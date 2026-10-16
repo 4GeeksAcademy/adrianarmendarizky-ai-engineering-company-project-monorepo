@@ -93,7 +93,7 @@ def create_ingredient(
     return IngredientRead(**ingredient.dict(), current_stock=0.0)
 
 
-@router.get("/products/{ingredient_id}", response_model=IngredientRead)
+@router.get("/products/{ingredient_id}", response_model=IngredientRead, dependencies=[Depends(get_current_user)])
 def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)):
     ingredient = db.get(Ingredient, ingredient_id)
     if not ingredient:
@@ -198,7 +198,7 @@ def create_exit(
     )
 
 
-@router.get("/orders", response_model=list[InventoryOrderRead])
+@router.get("/orders", response_model=list[InventoryOrderRead], dependencies=[Depends(get_current_user)])
 def list_orders(db: Session = Depends(get_db)):
     # One query for all ingredients, kept as a dict -- same N+1 avoidance
     # as list_ingredients, since this loop would otherwise do one lookup

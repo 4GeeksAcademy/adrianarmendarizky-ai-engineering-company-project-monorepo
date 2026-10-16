@@ -72,6 +72,15 @@ def update_user(
             status_code=403, detail="Only the user themselves or an admin can do this"
         )
 
+    # Only admins may change a role. A user editing their own account
+    # could otherwise promote themselves to admin.
+    if (
+        updates.role is not None
+        and updates.role != current_user.role
+        and current_user.role != Role.ADMIN
+    ):
+        raise HTTPException(status_code=403, detail="Only an admin can change a role")
+
     try:
         return svc.update_user(user_id, updates)
     except svc.EmailAlreadyRegisteredError as exc:
@@ -85,5 +94,9 @@ def update_user(
 @router.delete("/{user_id}")
 def delete_user(user_id: int, current_user: User = Depends(get_current_user)):
     _get_user_or_404(user_id)
+    if current_user.id != user_id and current_user.role != Role.ADMIN:
+        raise HTTPException(
+            status_code=403, detail="Only the user themselves or an admin can do this"
+        )
     svc.delete_user(user_id)
     return {"detail": f"User {user_id} deleted"}

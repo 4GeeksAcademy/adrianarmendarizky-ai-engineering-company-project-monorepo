@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
 from database import get_db
+from dependencies import get_current_user
 from reporting_models import PipelineRun, WeeklyLocationPerformance
 from tasks import run_weekly_performance_report
 
@@ -33,7 +34,7 @@ from tasks import run_weekly_performance_report
 # instead of calling the flow directly, and that task is the one that
 # needs data/pipelines/ on sys.path (see celery_app.py, which sets that
 # up once for every task, not per-route).
-router = APIRouter(prefix="/reporting", tags=["reporting"])
+router = APIRouter(prefix="/reporting", tags=["reporting"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/weekly-location-performance")
