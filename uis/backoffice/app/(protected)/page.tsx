@@ -91,7 +91,7 @@ export default function BackofficeDashboard() {
           <StatCard
             label="Active locations"
             value={String(activeLocations.length)}
-            sub="out of all locations"
+            sub={`out of ${sampleLocations.length} locations`}
           />
           <StatCard
             label="Avg ticket (USD)"
@@ -104,9 +104,9 @@ export default function BackofficeDashboard() {
             sub="in sample dataset"
           />
           <StatCard
-            label="Menu items"
-            value={String(sampleMenuItems.length)}
-            sub="in sample dataset"
+            label="Total revenue (USD)"
+            value={`$${Math.round(countryComparison.Colombia.totalRevenue.USD + countryComparison.USA.totalRevenue.USD).toLocaleString()}`}
+            sub="Colombia + USA, sample data"
           />
         </div>
       </section>
