@@ -9,6 +9,9 @@ services:
     container_name: brasaland-api
     env_file:
       - .env
+    environment:
+      - CODESPACE_NAME
+      - GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN
     ports:
       - "8000:8000"
     volumes:

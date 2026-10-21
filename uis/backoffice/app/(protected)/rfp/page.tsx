@@ -494,7 +494,7 @@ export default function RfpPage() {
           type="file"
           accept="application/pdf,.pdf"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="text-sm"
+          className="text-sm file:mr-4 file:cursor-pointer file:rounded file:border file:border-gray-300 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-medium hover:file:bg-gray-200"
         />
         <button
           type="submit"
